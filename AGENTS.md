@@ -152,6 +152,11 @@ errors, so regressions should be treated as failures.
   commands (`_PUBLIC_COMMANDS` in `runtime.py`) — including `/persona` — are
   handled before the mention gate and are available to any authorized occupant;
   owner/admin/dev commands are not.
+- Persona names are validated by `personas/naming.py` (`validate_persona_name`):
+  Unicode letters/digits from any script (Cyrillic included) plus `. _ -`, NFC
+  normalised and lowercased. Never reintroduce an ASCII-only regex — it breaks
+  non-Latin names. Invalid names raise `InvalidPersonaName(key, **params)`; the
+  manager renders the i18n key `persona.name.*`.
 
 ## Tests that must stay green (SPEC §57)
 

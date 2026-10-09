@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -30,11 +29,15 @@ from agent.personas.loader import (
     list_persona_dirs,
     load_persona_dir,
 )
+from agent.personas.naming import (
+    InvalidPersonaName,
+    normalize_persona_name,
+    validate_persona_name,
+)
 
 log = logging.getLogger(__name__)
 
 _DOCS = ("identity", "personality", "instructions", "context")
-_NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 
 _PERSONA_TOML_TEMPLATE = """[persona]
 id = "{name}"
@@ -112,13 +115,13 @@ class PersonaManager:
     def _active_persona(self, scope: _Scope) -> str:
         path = self._active_file(scope)
         if path.is_file():
-            value = path.read_text(encoding="utf-8").strip().lower()
+            value = normalize_persona_name(path.read_text(encoding="utf-8"))
             if value:
                 return value
         return self.config.default_persona
 
     def _set_active_persona(self, scope: _Scope, name: str) -> None:
-        name = name.strip().lower()
+        name = normalize_persona_name(name)
         if not self._exists(scope, name):
             raise ConfigError(f"Unknown persona: {name!r}")
         path = self._active_file(scope)
@@ -133,7 +136,7 @@ class PersonaManager:
     # -- resolution (shared) ---------------------------------------------
 
     def _resolve(self, scope: _Scope, active: str | None = None) -> Persona:
-        name = (active or self._active_persona(scope)).strip().lower()
+        name = normalize_persona_name(active or self._active_persona(scope))
         user_persona_dir = scope.personas_root / name
 
         definition = self._load_definition(name, user_persona_dir)
@@ -176,11 +179,12 @@ class PersonaManager:
     def _create_persona(self, scope: _Scope, name: str, *, description: str = "") -> None:
         if not self.config.allow_user_personas:
             raise AuthorizationError("User-defined personas are disabled")
-        name = name.strip().lower()
-        if not _NAME_PATTERN.match(name):
-            raise ConfigError(
-                "Persona name must be lowercase alphanumeric with . _ - (max 64 chars)"
-            )
+        try:
+            name = validate_persona_name(name)
+        except InvalidPersonaName as exc:
+            from agent.i18n import get_translator
+
+            raise ConfigError(get_translator().t(exc.key, **exc.params)) from exc
         if self._exists(scope, name):
             raise ConfigError(f"Persona already exists: {name!r}")
         existing = self._list_local_personas(scope)
@@ -196,7 +200,7 @@ class PersonaManager:
         (directory / "instructions.md").write_text("", encoding="utf-8")
 
     def _delete_persona(self, scope: _Scope, name: str) -> None:
-        name = name.strip().lower()
+        name = normalize_persona_name(name)
         directory = (scope.personas_root / name).resolve()
         root = scope.personas_root.resolve()
         if not directory.is_relative_to(root) or not directory.is_dir():
@@ -211,7 +215,7 @@ class PersonaManager:
             self._reset_active_persona(scope)
 
     def _export_persona(self, scope: _Scope, name: str) -> str:
-        name = name.strip().lower()
+        name = normalize_persona_name(name)
         directory = (scope.personas_root / name).resolve()
         root = scope.personas_root.resolve()
         if not directory.is_relative_to(root) or not directory.is_dir():
@@ -231,7 +235,7 @@ class PersonaManager:
         if not isinstance(files, dict) or not files:
             raise ConfigError("Persona JSON must contain a non-empty 'files' object")
         self._create_persona(scope, name)
-        directory = scope.personas_root / name.strip().lower()
+        directory = scope.personas_root / normalize_persona_name(name)
         allowed = {
             "persona.toml",
             "identity.md",

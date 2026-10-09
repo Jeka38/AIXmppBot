@@ -6,14 +6,13 @@ files: ``identity.md``, ``personality.md``, ``instructions.md`` and ``context.md
 
 from __future__ import annotations
 
-import re
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from pydantic import BaseModel, Field, field_validator
 
-_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
+from agent.personas.naming import InvalidPersonaName, validate_persona_name
 
 _FILES = ("identity.md", "personality.md", "instructions.md", "context.md")
 
@@ -33,10 +32,10 @@ class PersonaDefinition(BaseModel):
     @field_validator("id")
     @classmethod
     def _validate_id(cls, value: str) -> str:
-        value = value.strip().lower()
-        if not _ID_PATTERN.match(value):
-            raise ValueError("persona id must be lowercase alphanumeric with . _ - (max 64 chars)")
-        return value
+        try:
+            return validate_persona_name(value)
+        except InvalidPersonaName as exc:
+            raise ValueError(f"invalid persona id ({exc.key})") from exc
 
 
 @dataclass

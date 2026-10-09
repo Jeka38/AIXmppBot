@@ -302,6 +302,10 @@ command targets the user's personas; inside a room it targets the room's
 personas. Both scopes are isolated from each other and limited by
 `[personas] max_user_personas`.
 
+Persona names may use any language (Latin, Cyrillic, Greek, ...): they accept
+Unicode letters/digits plus `.`, `_` and `-`, are NFC-normalised and lowercased,
+and cannot contain path separators.
+
 ## License
 
 MIT
