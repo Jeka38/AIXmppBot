@@ -1,0 +1,90 @@
+{
+  "command.unknown": "Unknown command: /{name}. Try /help.",
+  "command.help.public": "Available commands:\n/new        start a new session (archive current)\n/reset      clear the current session\n/forget     clear the session and long-term memory\n/status     show agent and session status\n/ping       connectivity check\n/help       show this help\n\nPersonas:\n/persona            show the active persona\n/persona list       list available personas\n/persona <name>     switch persona\n/persona reset      revert to the default persona\n/persona create <name>\n/persona delete <name>\n/persona export <name>\n/persona import <name> <json>\n\nSkills:\n/skills     list enabled skills\n\nIn a room (owner only):\n/mode mention|all   change how the bot responds",
+  "command.help.admin": "\n\nDeveloper commands (administrators only):\n/debug      configuration summary with secrets redacted\n/context    context-window usage\n/history    recent transcript events\n/tier       show the active model tier\n/usage      token usage for this session\n\nRooms:\n/join <room> [nick] [mention|all]   join a public room\n/leave [room]                       leave a room\n/rooms                              list active rooms",
+
+  "command.new": "Started a new session. Previous transcript is archived.",
+  "command.reset": "Session cleared.",
+  "command.forget": "Session and long-term memory cleared.",
+  "command.ping": "pong",
+
+  "status.title": "Agent: {name}",
+  "status.scope": "Session scope: {scope}",
+  "status.messages": "Messages in session: {count}",
+  "status.persona": "Active persona: {persona}",
+  "status.tier": "Active tier: {tier}",
+  "status.default": "(default)",
+
+  "persona.unavailable": "Personas are not available here.",
+  "persona.active": "Active persona: {name}\nUse /persona list to see options.",
+  "persona.none": "No personas defined.",
+  "persona.list_header": "Personas:",
+  "persona.reset": "Persona reset to default ({name}).",
+  "persona.created": "Persona '{name}' created.",
+  "persona.deleted": "Persona '{name}' deleted.",
+  "persona.imported": "Persona '{name}' imported.",
+  "persona.switched": "Switched to persona '{name}'.",
+  "persona.error": "Persona error: {error}",
+  "persona.usage.create": "Usage: /persona create <name>",
+  "persona.usage.delete": "Usage: /persona delete <name>",
+  "persona.usage.export": "Usage: /persona export <name>",
+  "persona.usage.import": "Usage: /persona import <name> <json>",
+
+  "skills.enabled": "Enabled skills: {names}",
+  "skills.none": "(none listed)",
+  "skill.usage": "Usage: /skill <name|info|list>",
+  "skill.restricted": "Skill management is restricted to administrators in this phase.",
+
+  "room.join.usage": "Usage: /join <room@conference.example.com> [nick] [mention|all]",
+  "room.leave.usage": "Usage: /leave <room@conference.example.com> (or use /leave from the room)",
+  "room.invalid_jid": "That does not look like a room JID (expected name@conference.example.com).",
+  "room.joining": "Joining room {room} as '{nick}'...",
+  "room.joined": "Joined room {room} as '{nick}'.",
+  "room.join_failed": "Could not join room {room}: {error}",
+  "room.leaving": "Leaving room {room}...",
+  "room.left": "Left room {room}.",
+  "room.leave_failed": "Could not leave room {room}: {error}",
+  "room.header": "Active rooms:",
+  "room.none": "Not in any rooms.",
+  "room.unavailable": "Room management is not available here.",
+  "room.mode.usage": "Usage: /mode mention|all",
+  "room.mode.current": "Activation mode for {room}: {mode}",
+  "room.mode.set": "Activation mode for {room} set to '{mode}'.",
+  "room.mode.invalid": "Unknown mode '{mode}'. Use 'mention' or 'all'.",
+  "room.mode.not_in_room": "This command can only be used inside a room.",
+  "room.owner_only": "Only the room owner can change this.",
+
+  "dev.restricted": "/{command} is available to bot administrators only.",
+
+  "context.tokens": "Context tokens (est.): {estimate}",
+  "context.budget": "Budget: {budget}",
+  "context.events": "Events stored: {events}",
+
+  "history.usage": "Usage: /history [count]",
+  "history.empty": "(empty)",
+
+  "tier.active": "Active tier: {tier}",
+  "tier.configured": "Configured tiers: {tiers}",
+  "tier.default_model": "(default model)",
+
+  "usage.input": "Input tokens: {count}",
+  "usage.output": "Output tokens: {count}",
+  "usage.total": "Total: {count}",
+
+  "raw.disabled": "/raw requires a developer JID and security.allow_raw_xml=true.",
+  "raw.unavailable": "/raw is available but raw stanza sending is not enabled in this phase.",
+
+  "runtime.error": "Sorry, an error occurred: {error}",
+  "runtime.cancelled": "Cancelled.",
+  "runtime.done": "Done.",
+  "runtime.confirm_prompt": "Confirm? [yes/no]",
+  "runtime.wrong_confirm_jid": "Only the person who requested this action can confirm it.",
+  "runtime.action_not_completed": "Action not completed: {error}",
+
+  "confirmation.prompt": "I am about to run '{skill}' with {details}. This action may be irreversible. Confirm? [yes/no]",
+
+  "memory.stored": "Stored.",
+  "memory.empty": "No long-term memory stored for this user yet.",
+  "memory.secret_refused": "Refusing to store content that looks like a secret or credential.",
+  "memory.nothing": "Nothing to store: content is empty."
+}

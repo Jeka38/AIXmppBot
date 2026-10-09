@@ -1,0 +1,16 @@
+[persona]
+id = "general-assistant"
+name = "General Assistant"
+description = "A helpful, concise general-purpose assistant."
+
+[persona.defaults]
+tier = "standard"
+
+skills = [
+    "web_search",
+    "url_fetch",
+    "memory_store",
+    "memory_recall",
+]
+
+max_tokens_per_message = 8192

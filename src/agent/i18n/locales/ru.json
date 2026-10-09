@@ -1,0 +1,90 @@
+{
+  "command.unknown": "Неизвестная команда: /{name}. Попробуйте /help.",
+  "command.help.public": "Доступные команды:\n/new        начать новую сессию (текущая архивируется)\n/reset      очистить текущую сессию\n/forget     очистить сессию и долговременную память\n/status     показать состояние агента и сессии\n/ping       проверка связи\n/help       показать эту справку\n\nПерсоны:\n/persona            показать активную персону\n/persona list       список доступных персон\n/persona <имя>      переключить персону\n/persona reset      вернуться к персоне по умолчанию\n/persona create <имя>\n/persona delete <имя>\n/persona export <имя>\n/persona import <имя> <json>\n\nНавыки:\n/skills     список включённых навыков\n\nВ комнате (только владелец):\n/mode mention|all   изменить, как бот отвечает",
+  "command.help.admin": "\n\nКоманды разработчика (только администраторы):\n/debug      сводка конфигурации (секреты скрыты)\n/context    использование контекстного окна\n/history    последние события переписки\n/tier       показать активный уровень модели\n/usage      расход токенов за сессию\n\nКомнаты:\n/join <комната> [ник] [mention|all]   войти в публичную комнату\n/leave [комната]                      покинуть комнату\n/rooms                                список активных комнат",
+
+  "command.new": "Начата новая сессия. Предыдущая переписка заархивирована.",
+  "command.reset": "Сессия очищена.",
+  "command.forget": "Сессия и долговременная память очищены.",
+  "command.ping": "понг",
+
+  "status.title": "Агент: {name}",
+  "status.scope": "Область сессии: {scope}",
+  "status.messages": "Сообщений в сессии: {count}",
+  "status.persona": "Активная персона: {persona}",
+  "status.tier": "Активный уровень: {tier}",
+  "status.default": "(по умолчанию)",
+
+  "persona.unavailable": "Персоны здесь недоступны.",
+  "persona.active": "Активная персона: {name}\nСписок доступных персон: /persona list.",
+  "persona.none": "Персоны не заданы.",
+  "persona.list_header": "Персоны:",
+  "persona.reset": "Персона сброшена на значение по умолчанию ({name}).",
+  "persona.created": "Персона «{name}» создана.",
+  "persona.deleted": "Персона «{name}» удалена.",
+  "persona.imported": "Персона «{name}» импортирована.",
+  "persona.switched": "Переключено на персону «{name}».",
+  "persona.error": "Ошибка персона: {error}",
+  "persona.usage.create": "Использование: /persona create <имя>",
+  "persona.usage.delete": "Использование: /persona delete <имя>",
+  "persona.usage.export": "Использование: /persona export <имя>",
+  "persona.usage.import": "Использование: /persona import <имя> <json>",
+
+  "skills.enabled": "Включённые навыки: {names}",
+  "skills.none": "(нет)",
+  "skill.usage": "Использование: /skill <имя|info|list>",
+  "skill.restricted": "Управление навыками на этом этапе доступно только администраторам.",
+
+  "room.join.usage": "Использование: /join <room@conference.example.com> [ник] [mention|all]",
+  "room.leave.usage": "Использование: /leave <room@conference.example.com> (или /leave из комнаты)",
+  "room.invalid_jid": "Это не похоже на JID комнаты (ожидается имя@conference.example.com).",
+  "room.joining": "Вхожу в комнату {room} как «{nick}»...",
+  "room.joined": "Вошел в комнату {room} как «{nick}».",
+  "room.join_failed": "Не удалось войти в комнату {room}: {error}",
+  "room.leaving": "Покидаю комнату {room}...",
+  "room.left": "Покинул комнату {room}.",
+  "room.leave_failed": "Не удалось покинуть комнату {room}: {error}",
+  "room.header": "Активные комнаты:",
+  "room.none": "Бот ни в одной комнате.",
+  "room.unavailable": "Управление комнатами здесь недоступно.",
+  "room.mode.usage": "Использование: /mode mention|all",
+  "room.mode.current": "Режим активации для {room}: {mode}",
+  "room.mode.set": "Режим активации для {room} изменён на «{mode}».",
+  "room.mode.invalid": "Неизвестный режим «{mode}». Используйте 'mention' или 'all'.",
+  "room.mode.not_in_room": "Эту команду можно использовать только внутри комнаты.",
+  "room.owner_only": "Изменить это может только владелец комнаты.",
+
+  "dev.restricted": "/{command} доступна только администраторам бота.",
+
+  "context.tokens": "Токенов в контексте (оценка): {estimate}",
+  "context.budget": "Бюджет: {budget}",
+  "context.events": "Сохранено событий: {events}",
+
+  "history.usage": "Использование: /history [количество]",
+  "history.empty": "(пусто)",
+
+  "tier.active": "Активный уровень: {tier}",
+  "tier.configured": "Настроенные уровни: {tiers}",
+  "tier.default_model": "(модель по умолчанию)",
+
+  "usage.input": "Входных токенов: {count}",
+  "usage.output": "Выходных токенов: {count}",
+  "usage.total": "Всего: {count}",
+
+  "raw.disabled": "/raw требует JID разработчика и security.allow_raw_xml=true.",
+  "raw.unavailable": "/raw доступна, но отправка необработанных станз на этом этапе не включена.",
+
+  "runtime.error": "Извините, произошла ошибка: {error}",
+  "runtime.cancelled": "Отменено.",
+  "runtime.done": "Готово.",
+  "runtime.confirm_prompt": "Подтвердить? [да/нет]",
+  "runtime.wrong_confirm_jid": "Подтвердить действие может только тот, кто его запросил.",
+  "runtime.action_not_completed": "Действие не выполнено: {error}",
+
+  "confirmation.prompt": "Собираюсь выполнить «{skill}» с параметрами {details}. Это действие может быть необратимым. Подтвердить? [да/нет]",
+
+  "memory.stored": "Сохранено.",
+  "memory.empty": "Для этого пользователя пока нет сохранённой долговременной памяти.",
+  "memory.secret_refused": "Отказываюсь сохранять содержимое, похожее на секрет или учётные данные.",
+  "memory.nothing": "Нечего сохранять: содержимое пустое."
+}

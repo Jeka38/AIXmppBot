@@ -1,0 +1,127 @@
+# Example configuration for the XMPP AI agent.
+# Copy to config/agent.toml and fill in values. Never commit real secrets;
+# reference environment variables with ${VAR} or ${VAR:-default}.
+
+[xmpp]
+# "c2s" for a normal account, "component" for an XEP-0114 component.
+mode = "c2s"
+
+jid = "${XMPP_JID}"
+password = "${XMPP_PASSWORD}"
+
+# Leave host/port empty to use DNS SRV discovery; set both to force an address.
+host = ""
+port = 0
+
+starttls = true
+verify_tls = true
+resource = "ai-agent"
+nickname = "AI-Agent"
+
+reconnect = true
+connection_timeout = 30.0
+
+# --- Component mode (uncomment to use) ---
+# mode = "component"
+# component_jid = "agent.example.com"
+# secret = "${XMPP_COMPONENT_SECRET}"
+# host = "127.0.0.1"
+# port = 5347
+
+[security]
+# Allowlists accept either a TOML list or a comma-separated string from the
+# environment, e.g. allowed_jids = "${ALLOWED_JIDS:-}".
+allowed_jids = "${ALLOWED_JIDS:-}"
+allowed_domains = "${ALLOWED_DOMAINS:-example.com}"
+# Only enable this together with "*" in allowed_domains.
+allow_wildcard = false
+
+# Bot administrators: allowed to run developer commands (/debug, /tier, ...).
+# Provide a comma-separated list via the ADMIN_JIDS environment variable.
+dev_command_jids = "${ADMIN_JIDS:-}"
+allow_raw_xml = false
+
+# Destructive skills that must be confirmed by the requesting user before they
+# run (SPEC §51). Set a skill to true to require an explicit yes/no.
+[security.confirmations]
+# github_delete_issue = true
+# send_email = true
+
+[agent]
+name = "AI Agent"
+max_tool_rounds = 10
+# UI language for command replies: "en" or "ru" (catalogs in src/agent/i18n/locales).
+language = "en"
+
+[llm]
+provider = "openai"
+base_url = "${LLM_BASE_URL:-https://api.openai.com/v1}"
+api_key = "${LLM_API_KEY}"
+model = "gpt-4o-mini"
+
+max_tokens = 8192
+temperature = 0.7
+
+dm_history_token_budget = 50000
+muc_history_token_budget = 80000
+
+[llm.tiers]
+light = "openai:gpt-4o-mini"
+standard = "openai:gpt-4o-mini"
+heavy = "openai:gpt-4o"
+vision = "openai:gpt-4o"
+
+[quotas]
+enabled = false
+daily_tokens = 100000
+per_user_daily_tokens = 20000
+on_exceed = "reject"
+
+[personas]
+allow_user_personas = true
+max_user_personas = 5
+default_persona = "general-assistant"
+
+[attachments]
+enabled = true
+max_size_mb = 25
+download_timeout = 30.0
+# temp_dir = "/tmp/agent-attachments"   # defaults to a fresh system temp dir
+
+[skills]
+# Empty list exposes every registered skill. List names to narrow the surface.
+enabled = []
+
+# Per-skill capability policy (SPEC §31). When an entry exists it replaces the
+# skill's declared capabilities, so a deployment can narrow what a skill may
+# reach. Targets are host:port for 'network' and credential names for
+# 'credential'. Example:
+# [skills.capabilities.url_fetch]
+# network = ["example.com:443", "docs.python.org:443"]
+
+[skills.web_search]
+# Requires a provider API key. Tavily: https://tavily.com
+enabled = false
+provider = "tavily"        # "tavily" or "perplexity"
+api_key = "${TAVILY_API_KEY:-}"
+max_results = 5
+
+[skills.github]
+enabled = false
+token = "${GITHUB_TOKEN:-}"
+default_owner = ""
+
+[storage]
+backend = "filesystem"
+data_dir = "data"
+
+[logging]
+level = "INFO"
+json_logs = false
+
+# --- MUC rooms ---
+[[rooms]]
+jid = "room@conference.example.com"
+nick = "AI-Agent"
+activation = "mention"   # "mention" or "all"
+history_token_budget = 80000

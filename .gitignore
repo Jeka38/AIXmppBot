@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Secrets and local config
+.env
+config/agent.toml
+
+# Runtime data (never commit user history, memory or state)
+/data/
+/memory/
+/state/
+/personas/
+/skills/
