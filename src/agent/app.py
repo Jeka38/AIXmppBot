@@ -133,12 +133,18 @@ class AgentApplication:
     def _register_skills(self, registry: SkillRegistry) -> None:
         from agent.security.capabilities import CapabilityGrant
         from agent.skills.memory import MemoryRecallSkill, MemoryStoreSkill
+        from agent.skills.persona import PersonaCreateSkill
         from agent.skills.url_fetch import UrlFetchSkill
         from agent.skills.web_search import WebSearchSkill
 
         memory = self.runtime_memory()
         registry.register(MemoryStoreSkill(memory))
         registry.register(MemoryRecallSkill(memory))
+        # Lets the model create personas from a natural-language role.
+        registry.register(
+            PersonaCreateSkill(),
+            grants=[CapabilityGrant.parse("filesystem")],
+        )
         # url_fetch may reach any public host (SSRF still applies); a deployment
         # can narrow this via [skills.capabilities.url_fetch] without code changes.
         registry.register(

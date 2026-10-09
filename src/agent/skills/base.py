@@ -75,6 +75,9 @@ class SkillContext:
     credential_store: CredentialStore | None = None
     #: Name of the skill currently executing (for diagnostics).
     skill_name: str | None = None
+    #: Persona manager, injected only for the persona skill. Skills never touch
+    #: persona storage directly; they call this with validated arguments.
+    personas: Any | None = None
 
     def redact(self, text: str) -> str:
         return self.redactor.redact(text) if self.redactor else text

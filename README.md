@@ -306,6 +306,21 @@ Persona names may use any language (Latin, Cyrillic, Greek, ...): they accept
 Unicode letters/digits plus `.`, `_` and `-`, are NFC-normalised and lowercased,
 and cannot contain path separators.
 
+### Creating personas from a prompt
+
+Besides the `/persona create` command, the assistant can create personas itself:
+ask it in natural language, e.g.
+
+```
+Create a persona called code-reviewer — a strict reviewer that flags insecure code.
+```
+
+The model writes the role documents and calls the `persona_create` tool, which
+persists them in the caller's scope and activates the new persona. As with every
+skill, the runtime validates the arguments and the write; the model never
+touches the filesystem directly. `persona_create` is always offered to the model,
+even under a persona whose `skills` list would otherwise hide it.
+
 ## License
 
 MIT

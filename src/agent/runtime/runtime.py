@@ -129,6 +129,8 @@ class AgentRuntime:
             room_jid=room_jid,
             session_id=scope,
             credential_store=self.credentials,
+            personas=self.personas,
+            data={"available_skills": [r.name for r in self.skills.all()]},
         )
 
     # -- DM handling -----------------------------------------------------
@@ -436,16 +438,18 @@ class AgentRuntime:
     def _has_tier(self, tier: str) -> bool:
         return bool(getattr(self.config.llm.tiers, tier, ""))
 
+    #: Tools always offered regardless of the active persona's skill list, so a
+    #: bounded persona can still create a new one.
+    _ALWAYS_ALLOWED_SKILLS = frozenset({"persona_create"})
+
     def _allowed_skills(
         self, room: RoomConfig | None, persona_skills: set[str] | None
     ) -> set[str] | None:
         configured = set(self.config.skills.enabled)
-        if configured:
-            allowed: set[str] | None = configured
-        else:
-            allowed = None
+        allowed: set[str] | None = configured or None
         if persona_skills is not None:
-            allowed = persona_skills if allowed is None else allowed & persona_skills
+            merged = set(persona_skills) | self._ALWAYS_ALLOWED_SKILLS
+            allowed = merged if allowed is None else allowed & merged
         return allowed
 
     def _record_usage(self, scope: str, outcome: LoopOutcome) -> None:

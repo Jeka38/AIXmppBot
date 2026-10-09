@@ -1,6 +1,7 @@
 """Skill subsystem: protocol, registry, validation and built-in skills."""
 
 from agent.skills.base import BaseSkill, Skill, SkillContext, SkillResult
+from agent.skills.persona import PersonaCreateSkill
 from agent.skills.registry import (
     ConfirmationPolicy,
     SkillRegistration,
@@ -12,6 +13,7 @@ from agent.skills.validation import validate_arguments
 __all__ = [
     "BaseSkill",
     "ConfirmationPolicy",
+    "PersonaCreateSkill",
     "Skill",
     "SkillContext",
     "SkillRegistration",

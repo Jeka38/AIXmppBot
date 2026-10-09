@@ -157,6 +157,13 @@ errors, so regressions should be treated as failures.
   normalised and lowercased. Never reintroduce an ASCII-only regex — it breaks
   non-Latin names. Invalid names raise `InvalidPersonaName(key, **params)`; the
   manager renders the i18n key `persona.name.*`.
+- The model can create personas via the `persona_create` skill (SPEC §65: the
+  model proposes, the runtime writes through `PersonaManager`; the skill gets no
+  filesystem path). The skill filters the model's `skills` argument against
+  `SkillContext.data["available_skills"]` so bogus/descriptive entries cannot
+  blank out a persona's tool access. `persona_create` is in
+  `AgentRuntime._ALWAYS_ALLOWED_SKILLS` and is exempt from persona-skill
+  filtering.
 
 ## Tests that must stay green (SPEC §57)
 

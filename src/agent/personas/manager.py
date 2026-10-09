@@ -176,7 +176,16 @@ class PersonaManager:
 
     # -- user persona management (shared) --------------------------------
 
-    def _create_persona(self, scope: _Scope, name: str, *, description: str = "") -> None:
+    def _create_persona(
+        self,
+        scope: _Scope,
+        name: str,
+        *,
+        description: str = "",
+        documents: dict[str, str] | None = None,
+        tier: str = "standard",
+        skills: list[str] | None = None,
+    ) -> None:
         if not self.config.allow_user_personas:
             raise AuthorizationError("User-defined personas are disabled")
         try:
@@ -192,12 +201,20 @@ class PersonaManager:
             raise AuthorizationError(f"Persona limit reached ({self.config.max_user_personas})")
         directory = scope.personas_root / name
         directory.mkdir(parents=True, exist_ok=True)
-        manifest = _PERSONA_TOML_TEMPLATE.format(name=name)
+        skill_list = ", ".join(f'"{skill}"' for skill in (skills or []))
+        manifest = (
+            _PERSONA_TOML_TEMPLATE.format(name=name)
+            .replace('tier = "standard"', f'tier = "{tier}"')
+            .replace("skills = []", f"skills = [{skill_list}]")
+        )
         if description:
             manifest = manifest.replace('description = ""', f'description = "{description}"')
         (directory / "persona.toml").write_text(manifest, encoding="utf-8")
-        (directory / "identity.md").write_text("", encoding="utf-8")
-        (directory / "instructions.md").write_text("", encoding="utf-8")
+        docs = documents or {}
+        # Always create the standard documents so the persona is editable later.
+        for doc in _DOCS:
+            content = docs.get(doc, "")
+            (directory / f"{doc}.md").write_text(content, encoding="utf-8")
 
     def _delete_persona(self, scope: _Scope, name: str) -> None:
         name = normalize_persona_name(name)
@@ -273,8 +290,24 @@ class PersonaManager:
     def resolve(self, jid: str, active: str | None = None) -> Persona:
         return self._resolve(self._user_scope(jid), active)
 
-    def create_user_persona(self, jid: str, name: str, *, description: str = "") -> None:
-        self._create_persona(self._user_scope(jid), name, description=description)
+    def create_user_persona(
+        self,
+        jid: str,
+        name: str,
+        *,
+        description: str = "",
+        documents: dict[str, str] | None = None,
+        tier: str = "standard",
+        skills: list[str] | None = None,
+    ) -> None:
+        self._create_persona(
+            self._user_scope(jid),
+            name,
+            description=description,
+            documents=documents,
+            tier=tier,
+            skills=skills,
+        )
 
     def delete_user_persona(self, jid: str, name: str) -> None:
         self._delete_persona(self._user_scope(jid), name)
@@ -302,8 +335,24 @@ class PersonaManager:
     def resolve_room(self, room_jid: str, active: str | None = None) -> Persona:
         return self._resolve(self._room_scope(room_jid), active)
 
-    def create_room_persona(self, room_jid: str, name: str, *, description: str = "") -> None:
-        self._create_persona(self._room_scope(room_jid), name, description=description)
+    def create_room_persona(
+        self,
+        room_jid: str,
+        name: str,
+        *,
+        description: str = "",
+        documents: dict[str, str] | None = None,
+        tier: str = "standard",
+        skills: list[str] | None = None,
+    ) -> None:
+        self._create_persona(
+            self._room_scope(room_jid),
+            name,
+            description=description,
+            documents=documents,
+            tier=tier,
+            skills=skills,
+        )
 
     def delete_room_persona(self, room_jid: str, name: str) -> None:
         self._delete_persona(self._room_scope(room_jid), name)

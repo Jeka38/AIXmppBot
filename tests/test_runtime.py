@@ -323,3 +323,44 @@ async def test_persona_command_works_in_room(tmp_path) -> None:
     assert manager.active_room_persona(room.jid) == "coder"
     # The user's own (DM) persona is unaffected.
     assert manager.active_persona("bob@example.com") == "general-assistant"
+
+
+def test_persona_create_always_allowed_skill() -> None:
+    from agent.runtime.runtime import AgentRuntime
+
+    # An empty persona skill list must not hide persona_create.
+    assert "persona_create" in AgentRuntime._ALWAYS_ALLOWED_SKILLS
+
+
+async def test_persona_create_offered_even_with_restricted_persona(tmp_path) -> None:
+    from agent.personas.manager import PersonaManager
+
+    config = make_config()
+    layout = DataLayout(tmp_path / "data")
+    store = FilesystemSessionStore(layout.memory_dir)
+    personas_dir = tmp_path / "personas"
+    d = personas_dir / "picky"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "persona.toml").write_text(
+        '[persona]\nid = "picky"\nname = "picky"\n'
+        '[persona.defaults]\ntier = "standard"\nskills = ["web_search"]\n',
+        encoding="utf-8",
+    )
+    manager = PersonaManager(
+        layout,
+        __import__("agent.config.models", fromlist=["PersonaConfig"]).PersonaConfig(
+            default_persona="picky"
+        ),
+        global_dirs=[personas_dir],
+    )
+    runtime = AgentRuntime(
+        config,
+        FakeRouter(FakeLLMClient()),  # type: ignore[arg-type]
+        SkillRegistry(),
+        store,
+        layout,
+        redactor=Redactor(),
+        personas=manager,
+    )
+    allowed = runtime._allowed_skills(None, {"web_search"})  # noqa: SLF001
+    assert allowed is not None and "persona_create" in allowed
