@@ -29,6 +29,7 @@
   "persona.name.too_long": "Persona name must be at most {max} characters.",
   "persona.name.invalid": "Persona name may contain letters, digits and '.', '_', '-' (any language, including Cyrillic).",
   "persona.name.start": "Persona name must start with a letter or digit.",
+  "persona.unsafe": "I can't create a persona that removes my safety rules or restrictions. Try describing a role, tone or expertise instead.",
   "persona.usage.create": "Usage: /persona create <name>",
   "persona.usage.delete": "Usage: /persona delete <name>",
   "persona.usage.export": "Usage: /persona export <name>",

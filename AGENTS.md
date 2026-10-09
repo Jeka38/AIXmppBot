@@ -105,6 +105,10 @@ errors, so regressions should be treated as failures.
   the original sender may confirm.
 - MUC `mention` mode: reply only when the nick/alias is mentioned (unmentioned
   messages are still recorded to room context); `all` mode replies to everything.
+  A leading mention is stripped from the message before it reaches the runtime
+  (`strip_mention`), so ``AI: /persona list`` is recognised as the command and
+  the bot's name does not pollute the prompt. Mention detection is word-boundary
+  aware (a short nick like ``AI`` does not match inside ``email``).
   The bot ignores its own messages to avoid loops. In public (semi-anonymous)
   rooms the occupant's real JID is hidden, so `check_room` treats an explicitly
   joined room as a trusted scope (config `restrict_to_allowed_jids = false`

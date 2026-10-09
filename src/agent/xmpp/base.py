@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from collections.abc import Awaitable, Callable
 from typing import Any, Literal
 
@@ -177,7 +178,7 @@ class BaseTransport:
             room_jid=room_jid,
             sender_jid=sender_jid,
             nick=nick,
-            text=body,
+            text=strip_mention(body, room),
             mentioned=mentioned,
             message_id=msg["id"] or None,
             attachments=_extract_oob(msg),
@@ -372,8 +373,46 @@ def _muc_nick(stanza: Any) -> str | None:
 
 
 def _is_mention(body: str, room: RoomConfig) -> bool:
+    """Whether *body* addresses the bot.
+
+    Matching is case-insensitive and word-boundary aware so a short nick like
+    ``AI`` does not match inside ``said`` or ``email``. ``@nick`` always counts.
+    """
     lowered = body.lower()
-    nick = room.nick.lower()
-    candidates = [f"@{nick}", nick]
-    candidates.extend(alias.lower() for alias in room.aliases)
-    return any(candidate in lowered for candidate in candidates)
+    candidates = [room.nick, *room.aliases]
+    for candidate in candidates:
+        nick = candidate.lower()
+        if not nick:
+            continue
+        if f"@{nick}" in lowered:
+            return True
+        if re.search(rf"(?<![\w@]){re.escape(nick)}(?![\w])", lowered):
+            return True
+    return False
+
+
+def strip_mention(body: str, room: RoomConfig) -> str:
+    """Remove a leading mention of the bot from a room message.
+
+    Handles ``AI: text``, ``@AI text``, ``AI, text`` and the bare nick. Only a
+    *leading* mention is stripped; mentions inside the sentence are kept. This
+    lets ``AI: /persona list`` be recognised as the ``/persona`` command and
+    keeps the bot's name out of the text sent to the model.
+    """
+    text = body.lstrip()
+    lowered = text.lower()
+    candidates: list[str] = []
+    for candidate in (f"@{room.nick}", room.nick, *room.aliases, *(f"@{a}" for a in room.aliases)):
+        c = candidate.lower()
+        if c and c not in candidates:
+            candidates.append(c)
+    # Longest first so "ai-agent" wins over "ai".
+    for candidate in sorted(candidates, key=len, reverse=True):
+        if not lowered.startswith(candidate):
+            continue
+        remainder = text[len(candidate) :]
+        if remainder and remainder[0] not in ":,;-—– \t":
+            continue  # e.g. "air" must not be read as the nick "ai"
+        stripped = remainder.lstrip(":,;-—– \t").strip()
+        return stripped
+    return body.strip()

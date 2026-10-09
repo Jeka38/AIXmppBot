@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 from slixmpp.stanza import Message
 
 from agent.config.models import RoomConfig
-from agent.xmpp.base import _is_mention, _muc_nick, _presence_jid
+from agent.xmpp.base import _is_mention, _muc_nick, _presence_jid, strip_mention
 from agent.xmpp.client import C2STransport
 from agent.xmpp.component import ComponentTransport
 from agent.xmpp.events import MessageEvent, MUCMessageEvent
@@ -68,6 +68,29 @@ def test_mention_detection() -> None:
     assert _is_mention("AI-Agent, what do you think?", room)
     assert _is_mention("agent: summarize this", room)  # alias
     assert not _is_mention("just chatting among ourselves", room)
+
+
+def test_mention_is_word_bounded() -> None:
+    room = RoomConfig(jid="room@conference.example.com", nick="AI")
+    # "AI" as a substring must not trigger a mention.
+    assert not _is_mention("said the email contained details", room)
+    assert not _is_mention("waiting patiently", room)
+    assert _is_mention("AI: help me", room)
+    assert _is_mention("@ai help me", room)
+    assert _is_mention("please ai help", room)
+
+
+def test_strip_mention_variants() -> None:
+    room = RoomConfig(jid="room@conference.example.com", nick="AI", aliases=["bot"])
+    assert strip_mention("AI: /persona list", room) == "/persona list"
+    assert strip_mention("@AI help me", room) == "help me"
+    assert strip_mention("AI, hello", room) == "hello"
+    assert strip_mention("bot привет", room) == "привет"
+    assert strip_mention("просто сообщение", room) == "просто сообщение"
+    # Not a mention: the nick inside a word is preserved.
+    assert strip_mention("said email", room) == "said email"
+    # Only a leading mention is stripped.
+    assert strip_mention("помоги мне, AI", room) == "помоги мне, AI"
 
 
 def test_presence_jid_extraction() -> None:
@@ -139,7 +162,8 @@ async def test_groupchat_message_decoded() -> None:
     assert room.jid == "room@conference.example.com"
     assert event.nick == "Alice"
     assert event.mentioned
-    assert event.text == "@AI-Agent help"
+    # The leading mention is stripped before the text reaches the runtime.
+    assert event.text == "help"
     # No muc#user/item -> real JID unknown -> anonymous placeholder + flag.
     assert event.anonymous is True
     assert event.sender_jid == "room@conference.example.com/Alice"

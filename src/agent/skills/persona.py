@@ -20,6 +20,27 @@ from agent.skills.base import BaseSkill, SkillContext, SkillResult
 _MAX_DOC_CHARS = 4000
 _NAME_RE = re.compile(r"[A-Za-z0-9._\-\u0400-\u04FF]+")
 
+#: Phrases that indicate a persona attempting to remove the assistant's safety
+#: rules or override the system policy. Such roles are refused rather than
+#: stored (SPEC §32: external text must not become policy).
+_UNSAFE_PATTERNS = [
+    re.compile(p, re.I)
+    for p in (
+        r"ignore (all )?(previous|prior|above) instructions",
+        r"disregard (the )?(safety|security|policy|rules)",
+        r"without (any )?(restrictions|rules|limits|filter)",
+        r"no (safety|security|content) (rules|policy|filter)",
+        r"you (are|have) no (rules|limits|restrictions)",
+        r"bypass (the )?(safety|security|policy)",
+        r"act as (if you were )?(an? )?(unrestricted|uncensored)",
+    )
+]
+
+
+def _looks_unsafe(documents: dict[str, str]) -> bool:
+    text = "\n".join(documents.values())
+    return any(pattern.search(text) for pattern in _UNSAFE_PATTERNS)
+
 
 class _PersonaWriter(Protocol):
     """The slice of PersonaManager the persona skill needs."""
@@ -130,6 +151,9 @@ class PersonaCreateSkill(BaseSkill):
             for s in raw_skills
             if str(s).strip() and (not known or str(s).strip() in known)
         ]
+
+        if _looks_unsafe({**documents, "description": description}):
+            return SkillResult.failure(tr.t("persona.unsafe"))
 
         try:
             _create(context, name, description, documents, tier, skills)
