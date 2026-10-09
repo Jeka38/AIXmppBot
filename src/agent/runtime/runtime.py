@@ -33,6 +33,19 @@ from agent.skills.registry import SkillRegistry
 
 log = logging.getLogger(__name__)
 
+#: Commands any authorized occupant may run inside a room. Administrative,
+#: owner-only and developer commands are intentionally excluded.
+_PUBLIC_COMMANDS = frozenset(
+    {"new", "reset", "forget", "status", "ping", "help", "start", "persona", "skills"}
+)
+
+
+def _is_public_command(text: str) -> bool:
+    from agent.runtime.commands import parse_command
+
+    parsed = parse_command(text)
+    return parsed is not None and parsed[0] in _PUBLIC_COMMANDS
+
 
 @dataclass
 class UsageCounter:
@@ -203,10 +216,11 @@ class AgentRuntime:
         if confirmation is not None:
             return confirmation
 
-        # Commands are handled before the mention gate so room owners can run
-        # e.g. "/mode all" without having to mention the bot. Allowed for bot
-        # developers and for room owners/admins.
-        if self.authorizer.is_dev(sender_jid) or affiliation in {"owner", "admin"}:
+        # Commands are handled before the mention gate so they work without a
+        # mention. Room owners/admins may run any command (e.g. "/mode all");
+        # ordinary occupants may run the safe user-facing commands.
+        is_privileged = self.authorizer.is_dev(sender_jid) or affiliation in {"owner", "admin"}
+        if is_privileged or _is_public_command(text):
             command_result = await self._maybe_command(
                 text, sender_jid, session, scope, room=room, affiliation=affiliation
             )
@@ -294,8 +308,12 @@ class AgentRuntime:
         persona_text = ""
         persona_skills: set[str] | None = None
         tier = "standard"
-        if self.personas is not None and room is None:
-            persona = self.personas.resolve(jid)
+        if self.personas is not None:
+            persona = (
+                self.personas.resolve_room(room.jid)
+                if room is not None
+                else self.personas.resolve(jid)
+            )
             persona_text = persona.render()
             if persona.skills:
                 persona_skills = set(persona.skills)
@@ -457,11 +475,17 @@ class AgentRuntime:
             usage_input=usage.input_tokens,
             usage_output=usage.output_tokens,
             personas=(
-                _PersonaCommandAdapter(self.personas)
-                if room is None and self.personas is not None
+                _PersonaCommandAdapter(
+                    self.personas, room_jid=room.jid if room is not None else None
+                )
+                if self.personas is not None
                 else None
             ),
-            active_persona=(self.personas.active_persona(jid) if self.personas is not None else ""),
+            active_persona=(
+                self.personas.active_room_persona(room.jid)
+                if room is not None and self.personas is not None
+                else (self.personas.active_persona(jid) if self.personas is not None else "")
+            ),
             available_skills=[registration.name for registration in self.skills.all()],
             rooms=self.rooms,
             current_room=room,
@@ -540,31 +564,58 @@ def _attach_images(context: list[ChatMessage], images: list[str]) -> list[ChatMe
 
 
 class _PersonaCommandAdapter:
-    """Narrow view of :class:`PersonaManager` used by the command handler."""
+    """Narrow view of :class:`PersonaManager` used by the command handler.
 
-    def __init__(self, manager: PersonaManager) -> None:
+    The command handler addresses personas by a ``jid`` string. In a DM that is
+    the user's JID; in a room it is the room JID, and the adapter routes every
+    call to the room-scoped manager methods.
+    """
+
+    def __init__(self, manager: PersonaManager, *, room_jid: str | None = None) -> None:
         self.manager = manager
+        self.room_jid = room_jid
 
     def list(self, jid: str) -> list[str]:
+        if self.room_jid is not None:
+            return self.manager.list_room_personas(self.room_jid)
         return self.manager.list_personas(jid)
 
     def active(self, jid: str) -> str:
+        if self.room_jid is not None:
+            return self.manager.active_room_persona(self.room_jid)
         return self.manager.active_persona(jid)
 
     def select(self, jid: str, name: str) -> None:
-        self.manager.set_active_persona(jid, name)
+        if self.room_jid is not None:
+            self.manager.set_room_active_persona(self.room_jid, name)
+        else:
+            self.manager.set_active_persona(jid, name)
 
     def reset(self, jid: str) -> None:
-        self.manager.reset_active_persona(jid)
+        if self.room_jid is not None:
+            self.manager.reset_room_active_persona(self.room_jid)
+        else:
+            self.manager.reset_active_persona(jid)
 
     def create(self, jid: str, name: str, description: str = "") -> None:
-        self.manager.create_user_persona(jid, name, description=description)
+        if self.room_jid is not None:
+            self.manager.create_room_persona(self.room_jid, name, description=description)
+        else:
+            self.manager.create_user_persona(jid, name, description=description)
 
     def delete(self, jid: str, name: str) -> None:
-        self.manager.delete_user_persona(jid, name)
+        if self.room_jid is not None:
+            self.manager.delete_room_persona(self.room_jid, name)
+        else:
+            self.manager.delete_user_persona(jid, name)
 
     def export(self, jid: str, name: str) -> str:
+        if self.room_jid is not None:
+            return self.manager.export_room_persona(self.room_jid, name)
         return self.manager.export_user_persona(jid, name)
 
     def import_(self, jid: str, name: str, payload: str) -> None:
-        self.manager.import_user_persona(jid, name, payload)
+        if self.room_jid is not None:
+            self.manager.import_room_persona(self.room_jid, name, payload)
+        else:
+            self.manager.import_user_persona(jid, name, payload)

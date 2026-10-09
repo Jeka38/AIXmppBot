@@ -266,3 +266,60 @@ async def test_room_owner_can_change_mode(tmp_path) -> None:
     )
     assert reply is None or "owner" in reply.lower()
     assert len(controller.modes) == 1
+
+
+async def test_persona_command_works_in_room(tmp_path) -> None:
+
+    from agent.config.models import PersonaConfig
+    from agent.personas.manager import PersonaManager
+
+    config = make_config()
+    layout = DataLayout(tmp_path / "data")
+    store = FilesystemSessionStore(layout.memory_dir)
+    personas_dir = tmp_path / "personas"
+    for name in ("general-assistant", "coder"):
+        d = personas_dir / name
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "persona.toml").write_text(
+            f'[persona]\nid = "{name}"\nname = "{name}"\n', encoding="utf-8"
+        )
+    manager = PersonaManager(
+        layout,
+        PersonaConfig(default_persona="general-assistant"),
+        global_dirs=[personas_dir],
+    )
+    runtime = AgentRuntime(
+        config,
+        FakeRouter(FakeLLMClient()),  # type: ignore[arg-type]
+        SkillRegistry(),
+        store,
+        layout,
+        redactor=Redactor(),
+        personas=manager,
+    )
+    room = RoomConfig(jid="room@conference.example.com", nick="Bot", activation="mention")
+
+    # An ordinary occupant (member) can use /persona from the room.
+    reply = await runtime.handle_muc(
+        room,
+        "room@conference.example.com/Bob",
+        "/persona list",
+        mentioned=False,
+        anonymous=True,
+        affiliation="member",
+    )
+    assert reply is not None
+    assert "general-assistant" in reply
+
+    reply = await runtime.handle_muc(
+        room,
+        "room@conference.example.com/Bob",
+        "/persona coder",
+        mentioned=False,
+        anonymous=True,
+        affiliation="member",
+    )
+    assert reply is not None
+    assert manager.active_room_persona(room.jid) == "coder"
+    # The user's own (DM) persona is unaffected.
+    assert manager.active_persona("bob@example.com") == "general-assistant"

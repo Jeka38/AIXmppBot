@@ -146,6 +146,12 @@ errors, so regressions should be treated as failures.
   the mention gate. Ownership comes from MUC affiliation (`owner`), which the
   server exposes even in anonymous rooms (parsed from `muc#user/item`, cached by
   xep_0045). It updates the in-memory `RoomConfig` and persists the change.
+- Personas are **scope-aware**: `PersonaManager` has `*_room_*` methods mirroring
+  the user ones, and `_PersonaCommandAdapter` routes to the room scope when
+  `room_jid` is set. `_run_loop` resolves the room persona in MUC. Public
+  commands (`_PUBLIC_COMMANDS` in `runtime.py`) — including `/persona` — are
+  handled before the mention gate and are available to any authorized occupant;
+  owner/admin/dev commands are not.
 
 ## Tests that must stay green (SPEC §57)
 

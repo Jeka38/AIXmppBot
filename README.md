@@ -185,7 +185,7 @@ rooms automatically.
 | `/persona list` | List available personas |
 | `/persona <name>` | Switch persona |
 | `/persona reset` | Revert to the default persona |
-| `/persona create\|delete\|export\|import` | Manage user personas |
+| `/persona create\|delete\|export\|import` | Manage personas (user in DM, room in MUC) |
 | `/skills` | List enabled skills |
 | `/mode mention\|all` | Room owner: change the bot's activation mode (usable inside the room) |
 | `/join <room> [nick] [mention\|all]` | Admin: join a public MUC room at runtime |
@@ -287,17 +287,20 @@ isolation (see [`SPEC.md`](SPEC.md) §57).
 
 ## Personas
 
-Personas live in directories and are resolved per user. Resolution order for
-each document (first non-empty wins):
+Personas are resolved per user (DM) **and per room** (MUC), each with its own
+active persona and local persona definitions. Resolution order for each document
+(first non-empty wins):
 
-1. `data/memory/users/<jid>/identity.md`
-2. `data/memory/users/<jid>/personas/<active>/identity.md`
+1. `<scope>/identity.md` (`data/memory/users/<jid>/` or `data/memory/rooms/<room>/`)
+2. `<scope>/personas/<active>/identity.md`
 3. `config/personas/<active>/identity.md` (and `data/personas/<active>/`)
 4. a global document, if configured
 
 A persona directory contains `persona.toml` plus optional `identity.md`,
-`personality.md`, `instructions.md` and `context.md`. User personas are isolated
-per JID and limited by `[personas] max_user_personas`.
+`personality.md`, `instructions.md` and `context.md`. In a DM the `/persona`
+command targets the user's personas; inside a room it targets the room's
+personas. Both scopes are isolated from each other and limited by
+`[personas] max_user_personas`.
 
 ## License
 

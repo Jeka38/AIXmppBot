@@ -82,9 +82,9 @@ def test_resolution_prefers_user_identity(tmp_path: Path, globals_dir: Path) -> 
 
     persona = manager.resolve("alice@example.com")
     assert persona.identity == "I am Alice's personal assistant."
-    assert persona.layers["identity"] == "user"
+    assert persona.layers["identity"] == "scope"
     # Non-overridden documents still come from the persona layer.
-    assert persona.layers.get("identity") == "user"
+    assert persona.layers.get("identity") == "scope"
 
 
 def test_active_persona_is_per_user(tmp_path: Path, globals_dir: Path) -> None:
@@ -153,3 +153,46 @@ def test_export_import_roundtrip(tmp_path: Path, globals_dir: Path) -> None:
     # Alice and Bob each own their copy independently.
     assert "writer" in manager.list_user_personas("bob@example.com")
     assert "writer" in manager.list_user_personas("alice@example.com")
+
+
+# -- room personas -----------------------------------------------------------
+
+
+def test_room_persona_is_separate_from_user(tmp_path: Path, globals_dir: Path) -> None:
+    manager = _manager(tmp_path, globals_dir)
+    manager.set_active_persona("alice@example.com", "coder")
+    manager.set_room_active_persona("room@conference.example.com", "general")
+
+    assert manager.active_persona("alice@example.com") == "coder"
+    assert manager.active_room_persona("room@conference.example.com") == "general"
+
+
+def test_room_persona_lifecycle(tmp_path: Path, globals_dir: Path) -> None:
+    manager = _manager(tmp_path, globals_dir)
+    manager.create_room_persona("room@conference.example.com", "study-buddy")
+    assert "study-buddy" in manager.list_room_personas("room@conference.example.com")
+
+    manager.set_room_active_persona("room@conference.example.com", "study-buddy")
+    assert manager.active_room_persona("room@conference.example.com") == "study-buddy"
+
+    manager.delete_room_persona("room@conference.example.com", "study-buddy")
+    assert "study-buddy" not in manager.list_room_personas("room@conference.example.com")
+    assert manager.active_room_persona("room@conference.example.com") == "general"
+
+
+def test_room_personas_are_isolated(tmp_path: Path, globals_dir: Path) -> None:
+    manager = _manager(tmp_path, globals_dir)
+    manager.create_room_persona("room1@conference.example.com", "only-room1")
+    assert "only-room1" in manager.list_room_personas("room1@conference.example.com")
+    assert "only-room1" not in manager.list_room_personas("room2@conference.example.com")
+
+
+def test_room_persona_resolution(tmp_path: Path, globals_dir: Path) -> None:
+    manager = _manager(tmp_path, globals_dir)
+    room_dir = manager.layout.room_dir("room@conference.example.com")
+    room_dir.mkdir(parents=True, exist_ok=True)
+    (room_dir / "identity.md").write_text("I am the room assistant.", encoding="utf-8")
+
+    persona = manager.resolve_room("room@conference.example.com")
+    assert persona.identity == "I am the room assistant."
+    assert persona.layers["identity"] == "scope"
