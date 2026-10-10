@@ -171,6 +171,12 @@ class AgentApplication:
         self.transport.on_presence = self._handle_presence
         self.transport.on_connected = self._handle_connected
         self.transport.on_disconnected = self._handle_disconnected
+        if self.config.security.auto_authorize_subscriptions:
+            self.transport.subscription_decider = self._allow_subscription
+
+    def _allow_subscription(self, jid: str) -> bool:
+        """Approve roster subscription only for allowed, non-ignored senders."""
+        return self.runtime.authorizer.is_authorized(jid)
 
     # -- lifecycle -------------------------------------------------------
 
@@ -271,6 +277,7 @@ class AgentApplication:
                 attachment_urls=event.attachments,
                 anonymous=event.anonymous,
                 affiliation=event.affiliation,
+                nick=event.nick,
             )
         except AgentError as exc:
             log.warning("Agent error handling MUC message in %s: %s", room.jid, exc)

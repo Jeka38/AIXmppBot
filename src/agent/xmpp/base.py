@@ -60,6 +60,8 @@ class BaseTransport:
         self.on_presence: PresenceCallback | None = None
         self.on_connected: Callable[[], Awaitable[None]] | None = None
         self.on_disconnected: Callable[[], Awaitable[None]] | None = None
+        #: Returns whether to approve a roster subscription from a JID.
+        self.subscription_decider: Callable[[str], bool] | None = None
 
     # -- lifecycle hooks (subclass responsibility) -----------------------
 
@@ -97,6 +99,28 @@ class BaseTransport:
         xmpp.add_event_handler("disconnected", self._on_disconnected)
         xmpp.add_event_handler("message", self._on_message)
         xmpp.add_event_handler("presence", self._on_presence)
+        # Roster subscription requests: accept only allowlisted senders.
+        xmpp.add_event_handler("roster_subscription_request", self._on_subscription_request)
+
+    def _on_subscription_request(self, presence: Any) -> None:
+        """Decide whether to approve an incoming roster subscription.
+
+        The application wires :attr:`subscription_decider` to the authorizer.
+        When unset, nothing is auto-approved (fail closed).
+        """
+        if self.subscription_decider is None:
+            return
+        try:
+            from_jid = str(presence["from"].bare)
+            item = self.xmpp.roster[presence["to"]][presence["from"]]  # type: ignore[union-attr]
+            if self.subscription_decider(from_jid):
+                log.info("Approving roster subscription from %s", from_jid)
+                item.authorize()
+            else:
+                log.info("Rejecting roster subscription from %s", from_jid)
+                item.unauthorize()
+        except Exception:  # pragma: no cover - roster internals vary
+            log.exception("Failed to handle subscription request")
 
     def register_muc(self, xmpp: slixmpp.basexmpp.BaseXMPP) -> None:
         """Register MUC support (C2S only)."""

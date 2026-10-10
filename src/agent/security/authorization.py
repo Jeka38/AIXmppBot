@@ -40,12 +40,37 @@ class Authorizer:
         self._allowed_domains = {d.strip().lower() for d in security.allowed_domains}
         self._dev_jids = {bare_jid(jid) for jid in security.dev_command_jids}
         self._wildcard = security.allow_wildcard and "*" in self._allowed_domains
+        # An "ignored_jids" entry with "@" is a JID; without it, a domain.
+        self._ignored_jids: set[str] = set()
+        self._ignored_domains: set[str] = set()
+        for entry in security.ignored_jids:
+            if "@" in entry:
+                self._ignored_jids.add(bare_jid(entry))
+            else:
+                self._ignored_domains.add(entry)
+        self._ignored_nicks = {nick.lower() for nick in security.ignored_nicks}
+
+    def is_ignored(self, jid: str, *, nick: str = "") -> bool:
+        """Whether *jid* (or MUC *nick*) must be silently ignored.
+
+        Ignoring takes priority over the allowlist: an ignored sender gets no
+        reply, no command handling and no roster subscription.
+        """
+        if nick and nick.lower() in self._ignored_nicks:
+            return True
+        bare = bare_jid(jid)
+        if bare and bare in self._ignored_jids:
+            return True
+        domain = jid_domain(jid)
+        return bool(domain) and domain in self._ignored_domains
 
     def check(self, jid: str) -> Decision:
         """Decide whether *jid* may interact with the agent globally."""
         bare = bare_jid(jid)
         if not bare:
             return Decision(False, "empty JID")
+        if self.is_ignored(jid):
+            return Decision(False, "sender is ignored")
         if bare in self._allowed_jids:
             return Decision(True, "explicit JID allowlist")
         if self._wildcard:
@@ -67,6 +92,7 @@ class Authorizer:
 
         Policy (SPEC §52):
 
+        * An explicitly ignored sender is always denied.
         * An explicit ``room.allowed_jids`` is authoritative: the real JID must
           match. Anonymous occupants — whose real JID the server hides — cannot
           be verified and are therefore denied.
@@ -75,6 +101,9 @@ class Authorizer:
         * Otherwise the room itself is the trusted scope (it had to be joined
           explicitly by an administrator), so any occupant may talk to the bot.
         """
+        if self.is_ignored(jid):
+            return Decision(False, "sender is ignored")
+
         if not room.allowed_jids and not room.restrict_to_allowed_jids:
             return Decision(True, "room is a trusted scope")
 

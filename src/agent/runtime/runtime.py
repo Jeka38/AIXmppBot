@@ -196,8 +196,12 @@ class AgentRuntime:
         attachment_urls: list[str] | None = None,
         anonymous: bool = False,
         affiliation: str = "",
+        nick: str = "",
     ) -> str | None:
         """Handle a MUC message. Returns reply text or ``None`` if ignored."""
+        if self.authorizer.is_ignored(sender_jid, nick=nick):
+            log.info("Ignoring MUC message from ignored sender %s/%s", room.jid, nick or sender_jid)
+            return None
         decision = self.authorizer.check_room(room, sender_jid, anonymous=anonymous)
         if not decision.allowed:
             log.info(

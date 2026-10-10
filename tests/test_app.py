@@ -92,6 +92,7 @@ async def test_muc_reply_sent_to_room(tmp_path, monkeypatch) -> None:
         attachment_urls=None,
         anonymous=False,
         affiliation="",
+        nick="",
     ):
         return "room answer"
 

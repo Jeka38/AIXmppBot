@@ -167,6 +167,7 @@ XMPP_JID=... XMPP_PASSWORD=... LLM_API_KEY=... \
 | `XMPP_COMPONENT_SECRET` | Component secret |
 | `ALLOWED_JIDS`, `ALLOWED_DOMAINS` | Authorization allowlists (comma-separated) |
 | `ADMIN_JIDS` | Bot administrators who may run developer commands (comma-separated) |
+| `IGNORED_JIDS`, `IGNORED_NICKS` | Senders to silently ignore (comma-separated) |
 | `LLM_API_KEY`, `LLM_BASE_URL` | LLM provider |
 | `TAVILY_API_KEY` | Web search (Phase 2) |
 | `GITHUB_TOKEN` | GitHub skill (Phase 3) |

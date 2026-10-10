@@ -213,3 +213,73 @@ async def test_groupchat_ignores_own_messages() -> None:
 
     # The bot must never treat its own room message as input (loop prevention).
     assert seen == []
+
+
+# -- roster subscription -----------------------------------------------------
+
+
+def _subscription_presence(sender: str) -> object:
+    from slixmpp.stanza import Presence
+
+    pres = Presence()
+    pres["from"] = sender
+    pres["to"] = "agent@example.com"
+    pres["type"] = "subscribe"
+    return pres
+
+
+def test_subscription_approved_for_allowed() -> None:
+    transport = C2STransport(make_config())
+    transport.subscription_decider = lambda jid: jid == "alice@example.com"
+    # Minimal fake roster item capturing authorize/unauthorize.
+    approved: list[bool] = []
+
+    class Item:
+        def authorize(self) -> None:
+            approved.append(True)
+
+        def unauthorize(self) -> None:
+            approved.append(False)
+
+    class Roster:
+        def __getitem__(self, key):  # noqa: ANN001
+            return Item()
+
+    class Xmpp:
+        roster = {"agent@example.com": Roster()}
+
+    transport.xmpp = Xmpp()  # type: ignore[assignment]
+    transport._on_subscription_request(_subscription_presence("alice@example.com"))
+    assert approved == [True]
+
+
+def test_subscription_rejected_for_unknown() -> None:
+    transport = C2STransport(make_config())
+    transport.subscription_decider = lambda jid: jid == "alice@example.com"
+    approved: list[bool] = []
+
+    class Item:
+        def authorize(self) -> None:
+            approved.append(True)
+
+        def unauthorize(self) -> None:
+            approved.append(False)
+
+    class Roster:
+        def __getitem__(self, key):  # noqa: ANN001
+            return Item()
+
+    class Xmpp:
+        roster = {"agent@example.com": Roster()}
+
+    transport.xmpp = Xmpp()  # type: ignore[assignment]
+    transport._on_subscription_request(_subscription_presence("stranger@unknown.test"))
+    assert approved == [False]
+
+
+def test_subscription_no_decider_does_nothing() -> None:
+    transport = C2STransport(make_config())
+    transport.subscription_decider = None
+    # Must not raise even with no roster configured.
+    transport.xmpp = None
+    transport._on_subscription_request(_subscription_presence("alice@example.com"))
