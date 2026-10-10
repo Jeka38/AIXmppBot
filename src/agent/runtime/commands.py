@@ -14,7 +14,7 @@ from agent.config.models import AppConfig, RoomConfig
 from agent.i18n import DEFAULT_LOCALE, Translator, get_translator
 from agent.runtime.rooms import RoomController
 from agent.runtime.sessions import Session
-from agent.security.ignore_store import GLOBAL_SCOPE, IgnoreStore, classify_target
+from agent.security.ignore_store import IgnoreStore, classify_target
 
 
 class PersonaCommands(Protocol):
@@ -52,8 +52,6 @@ class CommandContext:
     affiliation: str = ""
     #: Runtime ignore-list store (``/ignore``). ``None`` disables the commands.
     ignore_store: IgnoreStore | None = None
-    #: Ignore scope for ``/ignore``: a room scope when in a room, else global.
-    ignore_scope: str = GLOBAL_SCOPE
 
     def tr(self, key: str, /, **kwargs: object) -> str:
         translator = self.translator or get_translator()
@@ -358,18 +356,10 @@ class CommandHandler:
             set_room_mode=(room.jid, mode),
         )
 
-    # -- ignore list (administrators and room owners) --------------------
-
-    def _ignore_allowed(self, context: CommandContext) -> CommandResult | None:
-        """Allow bot admins anywhere, and room owners inside their room."""
-        if context.is_dev:
-            return None
-        if context.current_room is not None and context.affiliation == "owner":
-            return None
-        return CommandResult(handled=True, reply=context.tr("ignore.denied"))
+    # -- ignore list (administrators only) -------------------------------
 
     def _cmd_ignore(self, args: list[str], context: CommandContext) -> CommandResult:
-        denied = self._ignore_allowed(context)
+        denied = self._require_dev(context, "ignore")
         if denied:
             return denied
         if context.ignore_store is None:
@@ -379,12 +369,12 @@ class CommandHandler:
         kind, value = classify_target(args[0])
         if not value:
             return CommandResult(handled=True, reply=context.tr("ignore.usage"))
-        added = context.ignore_store.add(kind, value, scope=context.ignore_scope)
+        added = context.ignore_store.add(kind, value)
         key = "ignore.added" if added else "ignore.exists"
         return CommandResult(handled=True, reply=context.tr(key, target=value, kind=kind))
 
     def _cmd_unignore(self, args: list[str], context: CommandContext) -> CommandResult:
-        denied = self._ignore_allowed(context)
+        denied = self._require_dev(context, "unignore")
         if denied:
             return denied
         if context.ignore_store is None:
@@ -392,33 +382,25 @@ class CommandHandler:
         if not args:
             return CommandResult(handled=True, reply=context.tr("ignore.usage"))
         kind, value = classify_target(args[0])
-        removed = context.ignore_store.remove(kind, value, scope=context.ignore_scope)
+        removed = context.ignore_store.remove(kind, value)
         key = "ignore.removed" if removed else "ignore.not_found"
         return CommandResult(handled=True, reply=context.tr(key, target=value, kind=kind))
 
     def _render_ignore_list(self, context: CommandContext) -> str:
         store = context.ignore_store
-        lines = [context.tr("ignore.header")]
-        # Room-scoped entries first (only meaningful inside a room).
-        if context.ignore_scope != GLOBAL_SCOPE and store is not None:
-            room_entries = store.entries(context.ignore_scope)
-            if room_entries:
-                lines.append("  " + context.tr("ignore.section_room"))
-                lines.extend(f"    [{kind}] {value}" for kind, value in room_entries)
-        runtime_entries = store.entries(GLOBAL_SCOPE) if store is not None else []
+        runtime_entries = store.entries() if store is not None else []
         config_entries = [
             ("jid", entry) if "@" in entry else ("domain", entry)
             for entry in context.config.security.ignored_jids
         ]
         config_entries += [("nick", nick) for nick in context.config.security.ignored_nicks]
-        if runtime_entries or config_entries:
-            lines.append("  " + context.tr("ignore.section_global"))
-            for kind, value in config_entries:
-                lines.append(f"    [{kind}] {value} (config)")
-            for kind, value in runtime_entries:
-                lines.append(f"    [{kind}] {value}")
-        if len(lines) == 1:
+        lines = [context.tr("ignore.header")]
+        if not runtime_entries and not config_entries:
             lines.append("  " + context.tr("ignore.none"))
+        for kind, value in config_entries:
+            lines.append(f"  [{kind}] {value} (config)")
+        for kind, value in runtime_entries:
+            lines.append(f"  [{kind}] {value}")
         return "\n".join(lines)
 
     # -- developer commands ----------------------------------------------

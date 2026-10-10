@@ -11,12 +11,7 @@ from agent.memory.store import DataLayout, FilesystemSessionStore
 from agent.runtime.commands import CommandContext, CommandHandler
 from agent.runtime.sessions import Session
 from agent.security.authorization import Authorizer
-from agent.security.ignore_store import (
-    GLOBAL_SCOPE,
-    IgnoreStore,
-    classify_target,
-    scope_for_room,
-)
+from agent.security.ignore_store import IgnoreStore, classify_target
 from tests.conftest import make_config
 
 # -- classification ----------------------------------------------------------
@@ -42,25 +37,9 @@ def test_store_roundtrip(tmp_path: Path) -> None:
     assert store.add("jid", "spammer@example.com") is False  # duplicate
 
     reloaded = IgnoreStore(path).load()
-    entries = dict(reloaded.entries())
-    assert entries["jid"] == "spammer@example.com"
-    assert {v for k, v in reloaded.entries() if k == "domain"} == {"evil.com"}
-    assert {v for k, v in reloaded.entries() if k == "nick"} == {"flooder"}
-
-
-def test_store_per_scope(tmp_path: Path) -> None:
-    path = tmp_path / "ignored.json"
-    store = IgnoreStore(path)
-    store.add("nick", "Flooder", scope=scope_for_room("room@conference.example.com"))
-    store.add("jid", "spammer@example.com")  # global
-
-    reloaded = IgnoreStore(path).load()
-    room_entries = reloaded.entries(scope_for_room("room@conference.example.com"))
-    assert ("nick", "flooder") in room_entries
-    assert ("jid", "spammer@example.com") in reloaded.entries(GLOBAL_SCOPE)
-    # The room ignore does not leak globally.
-    assert not reloaded.matches(GLOBAL_SCOPE, nick="flooder")
-    assert reloaded.matches(scope_for_room("room@conference.example.com"), nick="flooder")
+    assert reloaded.jids == {"spammer@example.com"}
+    assert reloaded.domains == {"evil.com"}
+    assert reloaded.nicks == {"flooder"}
 
 
 def test_store_remove(tmp_path: Path) -> None:
@@ -68,14 +47,7 @@ def test_store_remove(tmp_path: Path) -> None:
     store.add("domain", "evil.com")
     assert store.remove("domain", "evil.com") is True
     assert store.remove("domain", "evil.com") is False
-    assert IgnoreStore(tmp_path / "ignored.json").load().entries() == []
-
-
-def test_store_loads_legacy_flat_format(tmp_path: Path) -> None:
-    path = tmp_path / "ignored.json"
-    path.write_text('{"jids": ["a@b.com"], "domains": [], "nicks": []}', encoding="utf-8")
-    store = IgnoreStore(path).load()
-    assert ("jid", "a@b.com") in store.entries(GLOBAL_SCOPE)
+    assert IgnoreStore(tmp_path / "ignored.json").load().domains == set()
 
 
 def test_store_ignores_corrupt_file(tmp_path: Path) -> None:
@@ -130,18 +102,17 @@ def _setup(tmp_path: Path, *, is_dev: bool, store: IgnoreStore | None = None):
     return CommandHandler(config, translator=Translator("en")), context
 
 
-def test_ignore_denied_for_non_owner(tmp_path: Path) -> None:
+def test_ignore_admin_only(tmp_path: Path) -> None:
     handler, context = _setup(tmp_path, is_dev=False)
     result = handler.dispatch("/ignore spammer@example.com", context)
-    assert result is not None and "owner" in result.reply.lower()
+    assert result is not None and "administrators only" in result.reply
 
 
 def test_ignore_adds_jid(tmp_path: Path) -> None:
     handler, context = _setup(tmp_path, is_dev=True)
     result = handler.dispatch("/ignore spammer@example.com", context)
     assert result is not None and "Ignoring" in result.reply
-    assert context.ignore_store is not None
-    assert ("jid", "spammer@example.com") in context.ignore_store.entries(GLOBAL_SCOPE)
+    assert "spammer@example.com" in context.ignore_store.jids  # type: ignore[union-attr]
 
 
 def test_ignore_adds_domain_and_nick(tmp_path: Path) -> None:
@@ -150,26 +121,8 @@ def test_ignore_adds_domain_and_nick(tmp_path: Path) -> None:
     handler.dispatch("/ignore nick:Flooder", context)
     store = context.ignore_store
     assert store is not None
-    entries = store.entries(GLOBAL_SCOPE)
-    assert ("domain", "evil.com") in entries
-    assert ("nick", "flooder") in entries
-
-
-def test_ignore_room_owner_allowed_and_scoped(tmp_path: Path) -> None:
-    from agent.config.models import RoomConfig
-
-    handler, context = _setup(tmp_path, is_dev=False)
-    context.current_room = RoomConfig(jid="room@conference.example.com", nick="Bot")
-    context.affiliation = "owner"
-    context.ignore_scope = scope_for_room("room@conference.example.com")
-
-    result = handler.dispatch("/ignore nick:Flooder", context)
-    assert result is not None and "Ignoring" in result.reply
-    store = context.ignore_store
-    assert store is not None
-    # Stored under the room scope, not globally.
-    assert ("nick", "flooder") in store.entries(scope_for_room("room@conference.example.com"))
-    assert ("nick", "flooder") not in store.entries(GLOBAL_SCOPE)
+    assert "evil.com" in store.domains
+    assert "flooder" in store.nicks
 
 
 def test_ignore_list_shows_entries(tmp_path: Path) -> None:
@@ -185,9 +138,8 @@ def test_unignore_removes(tmp_path: Path) -> None:
     handler.dispatch("/ignore evil.com", context)
     result = handler.dispatch("/unignore evil.com", context)
     assert result is not None and "No longer" in result.reply
-    store = context.ignore_store
-    assert store is not None
-    assert ("domain", "evil.com") not in store.entries(GLOBAL_SCOPE)
+    assert context.ignore_store is not None
+    assert "evil.com" not in context.ignore_store.domains
 
 
 def test_ignore_without_store_unavailable(tmp_path: Path) -> None:
