@@ -24,6 +24,11 @@ loop with tools, and persists per-user / per-room history and memory.
   the bot works in public (semi-anonymous) rooms; set
   `restrict_to_allowed_jids = true` per room for a strict allowlist.
 - **XEP-0085 chat states** (`composing` / `active` / `paused`).
+- **XEP-0394 message markup**: the assistant's Markdown (`**bold**`, `*italic*`,
+  `` `code` ``, `~~deleted~~`, fenced code blocks, lists, quotes) is sent as a
+  plain `<body>` plus a `urn:xmpp:markup:0` element, so clients render
+  formatting without XHTML-IM's spoofing/injection risks. Clients that do not
+  support markup still see clean plain text.
 - **Presence tracking** and a transport-agnostic presence event.
 - **Agentic loop**: LLM → tool → result → LLM, with a bounded tool-round limit
   and error isolation (a failing skill becomes a tool result, never a crash).

@@ -118,6 +118,13 @@ errors, so regressions should be treated as failures.
   chat-state stanzas via `xmpp.make_message(...)["chat_state"] = state`. MUC
   elements (`muc#user/item`) are only typed when xep_0045 is loaded, so parse
   them defensively from `stanza.xml` (see `_muc_item` in `xmpp/base.py`).
+- Outgoing formatting uses XEP-0394 (`urn:xmpp:markup:0`). `xmpp/markup.py`
+  converts the model's Markdown into a plain body plus offset-based spans/blocks;
+  `BaseTransport._send_message_stanza` builds the stanza. Slixmpp 1.10 predates
+  XEP-0394 v0.3, so `<strong/>` and `ordered="true"` on lists are added manually
+  — do not drop those branches or bold/ordered lists silently lose their type.
+  Offsets are unicode code points into the plain body; keep body and offsets in
+  sync when editing the converter.
 - Context budgeting is token-based via `TokenEstimator` (tiktoken when installed,
   char heuristic otherwise). `ContextBuilder` never drops the system prompt and
   never trims to zero messages. `Compactor` (Phase 2) replaces the oldest events

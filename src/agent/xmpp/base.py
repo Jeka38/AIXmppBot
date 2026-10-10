@@ -18,6 +18,7 @@ from slixmpp.xmlstream import JID
 from agent.config.models import AppConfig, RoomConfig
 from agent.errors import TimeoutError_, XMPPError
 from agent.xmpp.events import MessageEvent, MUCMessageEvent, PresenceEvent
+from agent.xmpp.markup import MarkupResult, MarkupSpan, markdown_to_markup
 
 MessageType = Literal["chat", "error", "groupchat", "headline", "normal"]
 
@@ -34,9 +35,11 @@ PresenceCallback = Callable[[PresenceEvent], Awaitable[None]]
 BASE_PLUGINS = (
     "xep_0030",  # Service Discovery
     "xep_0066",  # Out-of-Band Data (attachments)
+    "xep_0071",  # XHTML-IM (dependency of xep_0394)
     "xep_0085",  # Chat State Notifications
     "xep_0115",  # Entity Capabilities
     "xep_0199",  # Ping / keepalive
+    "xep_0394",  # Message Markup
 )
 
 
@@ -280,7 +283,63 @@ class BaseTransport:
 
     def _send_message_stanza(self, to_jid: str, body: str, message_type: MessageType) -> None:
         assert self.xmpp is not None
-        self.xmpp.send_message(mto=JID(to_jid), mbody=body, mtype=message_type)
+        markup = markdown_to_markup(body)
+        if not markup.has_markup:
+            self.xmpp.send_message(mto=JID(to_jid), mbody=markup.body, mtype=message_type)
+            return
+        message = self.xmpp.make_message(mto=JID(to_jid), mbody=markup.body, mtype=message_type)
+        self._apply_markup(message, markup)
+        message.send()
+
+    def _apply_markup(self, message: Any, markup: MarkupResult) -> None:
+        """Attach XEP-0394 elements to a message stanza."""
+        from slixmpp.plugins.xep_0394.stanza import (
+            BlockCode,
+            BlockQuote,
+            Li,
+            List,
+            Span,
+        )
+
+        container = message["markup"]
+        for element in markup.elements:
+            if isinstance(element, MarkupSpan):
+                span = Span()
+                span["start"] = element.start
+                span["end"] = element.end
+                # Slixmpp 1.10 only knows emphasis/code/deleted; add <strong/>
+                # (XEP-0394 v0.3) manually when requested.
+                supported = [t for t in element.types if t != "strong"]
+                span["types"] = supported
+                if "strong" in element.types:
+                    from slixmpp.xmlstream import ET
+
+                    span.xml.append(ET.Element("{urn:xmpp:markup:0}strong"))
+                container.append(span)
+            elif element.kind == "bcode":
+                code = BlockCode()
+                code["start"] = element.start
+                code["end"] = element.end
+                if element.language:
+                    code["language"] = element.language
+                container.append(code)
+            elif element.kind == "bquote":
+                quote = BlockQuote()
+                quote["start"] = element.start
+                quote["end"] = element.end
+                container.append(quote)
+            elif element.kind == "list":
+                listing = List()
+                listing["start"] = element.start
+                listing["end"] = element.end
+                # Slixmpp 1.10 predates the `ordered` attribute of XEP-0394 v0.3.
+                if element.ordered:
+                    listing.xml.set("ordered", "true")
+                for item_start in element.items:
+                    li = Li()
+                    li["start"] = item_start
+                    listing.append(li)
+                container.append(listing)
 
     async def send_presence(
         self, *, show: str = "", status: str = "", to_jid: str | None = None
