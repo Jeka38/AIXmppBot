@@ -28,6 +28,7 @@ from agent.security.authorization import Authorizer
 from agent.security.capabilities import CapabilitySet
 from agent.security.confirmation import PendingActionStore, classify_reply
 from agent.security.credentials import CredentialStore, EnvCredentialStore, Redactor
+from agent.security.ignore_store import IgnoreStore
 from agent.skills.base import SkillContext
 from agent.skills.registry import SkillRegistry
 
@@ -75,6 +76,7 @@ class AgentRuntime:
         credentials: CredentialStore | None = None,
         translator: Translator | None = None,
         rooms: RoomController | None = None,
+        ignore_store: IgnoreStore | None = None,
     ) -> None:
         self.config = config
         self.router = router
@@ -83,11 +85,12 @@ class AgentRuntime:
         self.layout = layout
         self.redactor = redactor or Redactor()
         self.credentials = credentials or EnvCredentialStore()
+        self.ignore_store = ignore_store
         self.translator = translator or set_locale(config.agent.language)
 
         self.estimator = TokenEstimator(config.llm.model)
         self.memory = FilesystemMemoryStore(layout.memory_dir)
-        self.authorizer = Authorizer(config.security)
+        self.authorizer = Authorizer(config.security, ignore_store=ignore_store)
         self.commands = CommandHandler(config, translator=self.translator)
 
         self.personas = personas
@@ -498,6 +501,7 @@ class AgentRuntime:
             rooms=self.rooms,
             current_room=room,
             affiliation=affiliation,
+            ignore_store=self.ignore_store,
         )
         result = self.commands.dispatch(text, context)
         if result is None or not result.handled:

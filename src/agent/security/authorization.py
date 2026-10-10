@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from agent.config.models import RoomConfig, SecurityConfig
+from agent.security.ignore_store import IgnoreStore
 
 
 def bare_jid(jid: str) -> str:
@@ -34,8 +35,14 @@ class Decision:
 class Authorizer:
     """Evaluates the global and per-room allowlists."""
 
-    def __init__(self, security: SecurityConfig) -> None:
+    def __init__(
+        self,
+        security: SecurityConfig,
+        *,
+        ignore_store: IgnoreStore | None = None,
+    ) -> None:
         self.security = security
+        self.ignore_store = ignore_store
         self._allowed_jids = {bare_jid(jid) for jid in security.allowed_jids}
         self._allowed_domains = {d.strip().lower() for d in security.allowed_domains}
         self._dev_jids = {bare_jid(jid) for jid in security.dev_command_jids}
@@ -54,15 +61,22 @@ class Authorizer:
         """Whether *jid* (or MUC *nick*) must be silently ignored.
 
         Ignoring takes priority over the allowlist: an ignored sender gets no
-        reply, no command handling and no roster subscription.
+        reply, no command handling and no roster subscription. Config entries and
+        runtime entries (``/ignore``) are both considered.
         """
-        if nick and nick.lower() in self._ignored_nicks:
-            return True
+        nick_lower = nick.lower()
         bare = bare_jid(jid)
-        if bare and bare in self._ignored_jids:
-            return True
         domain = jid_domain(jid)
-        return bool(domain) and domain in self._ignored_domains
+        store = self.ignore_store
+        if nick_lower and (
+            nick_lower in self._ignored_nicks or (store and nick_lower in store.nicks)
+        ):
+            return True
+        if bare and (bare in self._ignored_jids or (store and bare in store.jids)):
+            return True
+        if domain and (domain in self._ignored_domains or (store and domain in store.domains)):
+            return True
+        return False
 
     def check(self, jid: str) -> Decision:
         """Decide whether *jid* may interact with the agent globally."""

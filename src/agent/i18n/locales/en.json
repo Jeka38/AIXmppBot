@@ -1,7 +1,7 @@
 {
   "command.unknown": "Unknown command: /{name}. Try /help.",
   "command.help.public": "Available commands:\n/new        start a new session (archive current)\n/reset      clear the current session\n/forget     clear the session and long-term memory\n/status     show agent and session status\n/ping       connectivity check\n/help       show this help\n\nPersonas:\n/persona            show the active persona\n/persona list       list available personas\n/persona <name>     switch persona\n/persona reset      revert to the default persona\n/persona create <name>\n/persona delete <name>\n/persona export <name>\n/persona import <name> <json>\n\nSkills:\n/skills     list enabled skills\n\nIn a room (owner only):\n/mode mention|all   change how the bot responds",
-  "command.help.admin": "\n\nDeveloper commands (administrators only):\n/debug      configuration summary with secrets redacted\n/context    context-window usage\n/history    recent transcript events\n/tier       show the active model tier\n/usage      token usage for this session\n\nRooms:\n/join <room> [nick] [mention|all]   join a public room\n/leave [room]                       leave a room\n/rooms                              list active rooms",
+  "command.help.admin": "\n\nDeveloper commands (administrators only):\n/debug      configuration summary with secrets redacted\n/context    context-window usage\n/history    recent transcript events\n/tier       show the active model tier\n/usage      token usage for this session\n\nRooms:\n/join <room> [nick] [mention|all]   join a public room\n/leave [room]                       leave a room\n/rooms                              list active rooms\n/mode mention|all                   room owner: change how the bot responds\n\nIgnore list:\n/ignore <jid|domain|nick:Name>      silently ignore a sender\n/unignore <jid|domain|nick:Name>    remove from the ignore list\n/ignore                             show the ignore list",
 
   "command.new": "Started a new session. Previous transcript is archived.",
   "command.reset": "Session cleared.",
@@ -58,6 +58,15 @@
   "room.mode.invalid": "Unknown mode '{mode}'. Use 'mention' or 'all'.",
   "room.mode.not_in_room": "This command can only be used inside a room.",
   "room.owner_only": "Only the room owner can change this.",
+
+  "ignore.usage": "Usage: /ignore <jid@domain | domain | nick:Name>  ·  /unignore <same>",
+  "ignore.unavailable": "The ignore list is not available here.",
+  "ignore.added": "Ignoring {kind} '{target}'.",
+  "ignore.exists": "{kind} '{target}' is already ignored.",
+  "ignore.removed": "No longer ignoring {kind} '{target}'.",
+  "ignore.not_found": "{kind} '{target}' was not in the runtime ignore list.",
+  "ignore.header": "Ignore list:",
+  "ignore.none": "(empty)",
 
   "dev.restricted": "/{command} is available to bot administrators only.",
 

@@ -160,6 +160,10 @@ errors, so regressions should be treated as failures.
   bare entries are domains; `ignored_nicks` matches MUC nicks. `Authorizer`
   exposes `is_ignored(jid, nick=...)`; the runtime checks it in `handle_dm`
   (via `check`) and `handle_muc`.
+- `/ignore` and `/unignore` (admin-only) add/remove runtime entries persisted to
+  `data/state/ignored.json` (`security/ignore_store.py`); `Authorizer` merges
+  config entries with the store. `classify_target` decides JID vs domain vs
+  `nick:` prefix. Never store these in memory/history; the file is runtime state.
 - Roster subscriptions: `BaseTransport.subscription_decider` is wired by
   `AgentApplication` to `authorizer.is_authorized`. Only allowed, non-ignored
   senders are auto-approved; everyone else is rejected and with no decider
