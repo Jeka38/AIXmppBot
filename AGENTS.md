@@ -132,6 +132,12 @@ errors, so regressions should be treated as failures.
   to `header: cell` lines, strips headings (`#`), and `_normalize_html` removes
   stray tags. All text is HTML-escaped in `xhtml.py`; never interpolate raw model
   text into XHTML.
+- Long answers (over `[paste] threshold`, default 250 chars) are uploaded to a
+  paste service (`net/paste.py`, `PasteService`) and sent as a link
+  (`paste.notice`). Supports Pastefy (field `f`, URL in the response body, optional
+  Bearer `token`) and MicroBin (field `content`, URL in a 302 `Location`). A
+  failed upload falls back to sending the full text. The paste token is
+  registered with the redactor.
 - Context budgeting is token-based via `TokenEstimator` (tiktoken when installed,
   char heuristic otherwise). `ContextBuilder` never drops the system prompt and
   never trims to zero messages. `Compactor` (Phase 2) replaces the oldest events

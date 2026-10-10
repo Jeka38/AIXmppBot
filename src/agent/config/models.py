@@ -165,6 +165,22 @@ class AttachmentsConfig(BaseModel):
     temp_dir: str = ""
 
 
+class PasteConfig(BaseModel):
+    """Upload long answers to a paste service and reply with a link."""
+
+    enabled: bool = False
+    url: str = ""
+    #: Multipart field name: ``f`` for Pastefy, ``content`` for MicroBin.
+    field: str = "f"
+    #: Optional Bearer token (e.g. Pastefy API token).
+    token: str = ""
+    #: Answers longer than this many characters are pasted instead of sent.
+    threshold: int = 250
+    expiration: str = "3days"
+    privacy: str = "unlisted"
+    timeout: float = 30.0
+
+
 class SkillsConfig(BaseModel):
     """Root skill settings; individual skill tables are nested mappings."""
 
@@ -202,6 +218,7 @@ class AppConfig(BaseModel):
     quotas: QuotaConfig = Field(default_factory=QuotaConfig)
     personas: PersonaConfig = Field(default_factory=PersonaConfig)
     attachments: AttachmentsConfig = Field(default_factory=AttachmentsConfig)
+    paste: PasteConfig = Field(default_factory=PasteConfig)
     skills: SkillsConfig = Field(default_factory=SkillsConfig)
     storage: StorageConfig = Field(default_factory=StorageConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)

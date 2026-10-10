@@ -33,6 +33,10 @@ loop with tools, and persists per-user / per-room history and memory.
   Clients that support neither still see clean plain text: tables are flattened,
   HTML tags and Markdown artifacts (`#`, `|`) are stripped, and all text is
   HTML-escaped.
+- **Long answers** (over `[paste] threshold` characters, default 250) are
+  uploaded to a paste service (MicroBin-compatible, e.g. `paste.ubunix.ru`) and
+  sent as a short link instead of a wall of text. If the upload fails, the full
+  answer is sent so nothing is lost.
 - **Presence tracking** and a transport-agnostic presence event.
 - **Agentic loop**: LLM → tool → result → LLM, with a bounded tool-round limit
   and error isolation (a failing skill becomes a tool result, never a crash).

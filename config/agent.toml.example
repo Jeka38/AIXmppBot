@@ -92,6 +92,18 @@ max_size_mb = 25
 download_timeout = 30.0
 # temp_dir = "/tmp/agent-attachments"   # defaults to a fresh system temp dir
 
+# Upload long answers to a paste service and reply with a link instead of a wall
+# of text. Supports Pastefy (field "f", e.g. https://paste.ubunix.pro) and
+# MicroBin (field "content", e.g. https://paste.ubunix.ru).
+[paste]
+enabled = false
+url = "https://paste.ubunix.pro"
+field = "f"              # "f" for Pastefy, "content" for MicroBin
+token = "${PASTE_TOKEN:-}"
+threshold = 250          # answers longer than this many characters are pasted
+expiration = "3days"     # MicroBin only: 1min | 10min | 1hour | 24hour | 3days
+privacy = "unlisted"     # MicroBin only: public | unlisted | readonly
+
 [skills]
 # Empty list exposes every registered skill. List names to narrow the surface.
 enabled = []

@@ -86,6 +86,7 @@
   "runtime.confirm_prompt": "Confirm? [yes/no]",
   "runtime.wrong_confirm_jid": "Only the person who requested this action can confirm it.",
   "runtime.action_not_completed": "Action not completed: {error}",
+  "paste.notice": "The answer is long — I saved it here: {url}",
 
   "confirmation.prompt": "I am about to run '{skill}' with {details}. This action may be irreversible. Confirm? [yes/no]",
 

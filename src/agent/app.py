@@ -20,6 +20,7 @@ from agent.memory.store import DataLayout, FilesystemMemoryStore, FilesystemSess
 from agent.memory.summarize import Compactor
 from agent.net.attachments import AttachmentHandler
 from agent.net.fetch import SafeFetcher
+from agent.net.paste import PasteError, PasteService
 from agent.personas.manager import PersonaManager
 from agent.runtime.commands import parse_command
 from agent.runtime.rooms import RoomStore
@@ -62,6 +63,18 @@ class AgentApplication:
         self.fetcher = SafeFetcher(
             max_bytes=_max_fetch_bytes(config),
             timeout=config.attachments.download_timeout,
+        )
+        self.paste = (
+            PasteService(
+                config.paste.url,
+                field=config.paste.field,
+                token=config.paste.token,
+                expiration=config.paste.expiration,
+                privacy=config.paste.privacy,
+                timeout=config.paste.timeout,
+            )
+            if config.paste.enabled and config.paste.url
+            else None
         )
         self.personas = PersonaManager(
             layout,
@@ -120,6 +133,7 @@ class AgentApplication:
             self.config.llm.api_key,
             self.config.xmpp.password,
             self.config.xmpp.secret,
+            self.config.paste.token,
         )
         for skill_config in (
             self.config.skills.web_search,
@@ -197,6 +211,8 @@ class AgentApplication:
             log.exception("Error during transport shutdown")
         await self.runtime.aclose()
         await self.fetcher.aclose()
+        if self.paste is not None:
+            await self.paste.aclose()
 
     # -- transport callbacks ---------------------------------------------
 
@@ -297,15 +313,36 @@ class AgentApplication:
 
     async def _send_dm(self, jid: str, body: str) -> None:
         try:
-            await self.transport.send_message(jid, body)
+            await self.transport.send_message(jid, await self._maybe_paste(body))
         except Exception:  # noqa: BLE001
             log.exception("Failed to send DM to %s", jid)
 
     async def _send_muc(self, room_jid: str, body: str) -> None:
         try:
-            await self.transport.send_muc_message(room_jid, body)
+            await self.transport.send_muc_message(room_jid, await self._maybe_paste(body))
         except Exception:  # noqa: BLE001
             log.exception("Failed to send MUC message to %s", room_jid)
+
+    async def _maybe_paste(self, body: str) -> str:
+        """Upload a long answer to the paste service and return a link message.
+
+        Short answers (at or below the threshold) are returned unchanged. If the
+        upload fails, the original text is sent so the user still gets an answer.
+        """
+        config = self.config.paste
+        if self.paste is None or len(body) <= config.threshold:
+            return body
+        try:
+            url = await self.paste.upload(body)
+        except PasteError as exc:
+            log.warning("Paste upload failed, sending full text: %s", exc)
+            return body
+        return self._render_paste_notice(url)
+
+    def _render_paste_notice(self, url: str) -> str:
+        from agent.i18n import get_translator
+
+        return get_translator().t("paste.notice", url=url)
 
     async def _safe_chat_state(self, jid: str, state: str) -> None:
         try:

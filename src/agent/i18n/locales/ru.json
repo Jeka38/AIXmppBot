@@ -86,6 +86,7 @@
   "runtime.confirm_prompt": "Подтвердить? [да/нет]",
   "runtime.wrong_confirm_jid": "Подтвердить действие может только тот, кто его запросил.",
   "runtime.action_not_completed": "Действие не выполнено: {error}",
+  "paste.notice": "Ответ длинный — сохранил его здесь: {url}",
 
   "confirmation.prompt": "Собираюсь выполнить «{skill}» с параметрами {details}. Это действие может быть необратимым. Подтвердить? [да/нет]",
 
