@@ -10,7 +10,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from agent.config.models import RoomConfig, SecurityConfig
-from agent.security.ignore_store import IgnoreStore
 
 
 def bare_jid(jid: str) -> str:
@@ -35,56 +34,18 @@ class Decision:
 class Authorizer:
     """Evaluates the global and per-room allowlists."""
 
-    def __init__(
-        self,
-        security: SecurityConfig,
-        *,
-        ignore_store: IgnoreStore | None = None,
-    ) -> None:
+    def __init__(self, security: SecurityConfig) -> None:
         self.security = security
-        self.ignore_store = ignore_store
         self._allowed_jids = {bare_jid(jid) for jid in security.allowed_jids}
         self._allowed_domains = {d.strip().lower() for d in security.allowed_domains}
         self._dev_jids = {bare_jid(jid) for jid in security.dev_command_jids}
         self._wildcard = security.allow_wildcard and "*" in self._allowed_domains
-        # An "ignored_jids" entry with "@" is a JID; without it, a domain.
-        self._ignored_jids: set[str] = set()
-        self._ignored_domains: set[str] = set()
-        for entry in security.ignored_jids:
-            if "@" in entry:
-                self._ignored_jids.add(bare_jid(entry))
-            else:
-                self._ignored_domains.add(entry)
-        self._ignored_nicks = {nick.lower() for nick in security.ignored_nicks}
-
-    def is_ignored(self, jid: str, *, nick: str = "") -> bool:
-        """Whether *jid* (or MUC *nick*) must be silently ignored.
-
-        Ignoring takes priority over the allowlist: an ignored sender gets no
-        reply, no command handling and no roster subscription. Config entries and
-        runtime entries (``/ignore``) are both considered.
-        """
-        nick_lower = nick.lower()
-        bare = bare_jid(jid)
-        domain = jid_domain(jid)
-        store = self.ignore_store
-        if nick_lower and (
-            nick_lower in self._ignored_nicks or (store and nick_lower in store.nicks)
-        ):
-            return True
-        if bare and (bare in self._ignored_jids or (store and bare in store.jids)):
-            return True
-        if domain and (domain in self._ignored_domains or (store and domain in store.domains)):
-            return True
-        return False
 
     def check(self, jid: str) -> Decision:
         """Decide whether *jid* may interact with the agent globally."""
         bare = bare_jid(jid)
         if not bare:
             return Decision(False, "empty JID")
-        if self.is_ignored(jid):
-            return Decision(False, "sender is ignored")
         if bare in self._allowed_jids:
             return Decision(True, "explicit JID allowlist")
         if self._wildcard:
@@ -106,7 +67,6 @@ class Authorizer:
 
         Policy (SPEC §52):
 
-        * An explicitly ignored sender is always denied.
         * An explicit ``room.allowed_jids`` is authoritative: the real JID must
           match. Anonymous occupants — whose real JID the server hides — cannot
           be verified and are therefore denied.
@@ -115,9 +75,6 @@ class Authorizer:
         * Otherwise the room itself is the trusted scope (it had to be joined
           explicitly by an administrator), so any occupant may talk to the bot.
         """
-        if self.is_ignored(jid):
-            return Decision(False, "sender is ignored")
-
         if not room.allowed_jids and not room.restrict_to_allowed_jids:
             return Decision(True, "room is a trusted scope")
 

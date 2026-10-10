@@ -167,7 +167,6 @@ XMPP_JID=... XMPP_PASSWORD=... LLM_API_KEY=... \
 | `XMPP_COMPONENT_SECRET` | Component secret |
 | `ALLOWED_JIDS`, `ALLOWED_DOMAINS` | Authorization allowlists (comma-separated) |
 | `ADMIN_JIDS` | Bot administrators who may run developer commands (comma-separated) |
-| `IGNORED_JIDS`, `IGNORED_NICKS` | Senders to silently ignore (comma-separated) |
 | `LLM_API_KEY`, `LLM_BASE_URL` | LLM provider |
 | `TAVILY_API_KEY` | Web search (Phase 2) |
 | `GITHUB_TOKEN` | GitHub skill (Phase 3) |
@@ -197,9 +196,6 @@ rooms automatically.
 | `/persona reset` | Revert to the default persona |
 | `/persona create\|delete\|export\|import` | Manage personas (user in DM, room in MUC) |
 | `/skills` | List enabled skills |
-| `/ignore <jid\|domain\|nick:Name>` | Admin: silently ignore a sender (persisted) |
-| `/unignore <jid\|domain\|nick:Name>` | Admin: remove from the ignore list |
-| `/ignore` | Admin: show the ignore list (config + runtime) |
 | `/mode mention\|all` | Room owner: change the bot's activation mode (usable inside the room) |
 | `/join <room> [nick] [mention\|all]` | Admin: join a public MUC room at runtime |
 | `/leave [room]` | Admin: leave a room |

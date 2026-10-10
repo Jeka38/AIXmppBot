@@ -41,14 +41,8 @@ allow_wildcard = false
 dev_command_jids = "${ADMIN_JIDS:-}"
 allow_raw_xml = false
 
-# Silently ignore these senders: no reply, no commands, no roster subscription.
-# Entries with '@' are JIDs, plain entries are domains or MUC nicks. Ignoring
-# wins over the allowlist.
-ignored_jids = "${IGNORED_JIDS:-}"
-ignored_nicks = "${IGNORED_NICKS:-}"
-
 # Auto-approve roster subscription requests from allowlisted senders; everyone
-# else is rejected. Ignored senders are never approved.
+# else is rejected.
 auto_authorize_subscriptions = true
 
 # Destructive skills that must be confirmed by the requesting user before they

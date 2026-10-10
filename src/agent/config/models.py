@@ -55,16 +55,9 @@ class SecurityConfig(BaseModel):
     dev_command_jids: list[str] = Field(default_factory=list)
     allow_raw_xml: bool = False
 
-    #: JIDs (bare or full), domains or MUC nicks whose messages are always
-    #: ignored: no reply, no commands, no roster subscription. Entries with an
-    #: ``@`` are matched as JIDs, plain entries as domains or MUC nicks.
-    ignored_jids: list[str] = Field(default_factory=list)
-    #: MUC nicks to ignore regardless of room.
-    ignored_nicks: list[str] = Field(default_factory=list)
-
     #: Automatically approve roster subscription requests from senders that pass
-    #: the allowlist (and are not ignored). Denied for everyone else, so the bot
-    #: never silently accepts unknown contacts.
+    #: the allowlist. Denied for everyone else, so the bot never silently accepts
+    #: unknown contacts.
     auto_authorize_subscriptions: bool = True
 
     require_tls: bool = True
@@ -75,8 +68,6 @@ class SecurityConfig(BaseModel):
         "allowed_jids",
         "allowed_domains",
         "dev_command_jids",
-        "ignored_jids",
-        "ignored_nicks",
         mode="before",
     )
     @classmethod

@@ -27,7 +27,6 @@ from agent.runtime.runtime import AgentRuntime
 from agent.search import build_search_provider
 from agent.search.base import SearchProvider
 from agent.security.credentials import EnvCredentialStore, Redactor
-from agent.security.ignore_store import IgnoreStore
 from agent.security.policy import CapabilityPolicy
 from agent.skills.registry import ConfirmationPolicy, SkillRegistry
 from agent.xmpp.base import BaseTransport
@@ -83,7 +82,6 @@ class AgentApplication:
 
         self.skills = skills
         self.room_store = RoomStore(layout.state_dir / "rooms.json")
-        self.ignore_store = IgnoreStore(layout.state_dir / "ignored.json").load()
 
         # Imported lazily so the runtime core never hard-depends on Slixmpp at
         # import time (keeps it testable without a transport).
@@ -105,7 +103,6 @@ class AgentApplication:
             attachments=self.attachments,
             credentials=self.credentials,
             rooms=self,
-            ignore_store=self.ignore_store,
         )
         self._wire_transport()
         self._stop = asyncio.Event()
@@ -178,7 +175,7 @@ class AgentApplication:
             self.transport.subscription_decider = self._allow_subscription
 
     def _allow_subscription(self, jid: str) -> bool:
-        """Approve roster subscription only for allowed, non-ignored senders."""
+        """Approve roster subscription only for allowlisted senders."""
         return self.runtime.authorizer.is_authorized(jid)
 
     # -- lifecycle -------------------------------------------------------

@@ -14,7 +14,6 @@ from agent.config.models import AppConfig, RoomConfig
 from agent.i18n import DEFAULT_LOCALE, Translator, get_translator
 from agent.runtime.rooms import RoomController
 from agent.runtime.sessions import Session
-from agent.security.ignore_store import IgnoreStore, classify_target
 
 
 class PersonaCommands(Protocol):
@@ -50,8 +49,6 @@ class CommandContext:
     current_room: RoomConfig | None = None
     #: The sender's MUC affiliation in ``current_room`` (owner/admin/...).
     affiliation: str = ""
-    #: Runtime ignore-list store (``/ignore``). ``None`` disables the commands.
-    ignore_store: IgnoreStore | None = None
 
     def tr(self, key: str, /, **kwargs: object) -> str:
         translator = self.translator or get_translator()
@@ -114,8 +111,6 @@ class CommandHandler:
             "leave": self._cmd_leave,
             "rooms": self._cmd_rooms,
             "mode": self._cmd_mode,
-            "ignore": self._cmd_ignore,
-            "unignore": self._cmd_unignore,
             "debug": self._cmd_debug,
             "context": self._cmd_context,
             "history": self._cmd_history,
@@ -355,53 +350,6 @@ class CommandHandler:
             reply=context.tr("room.mode.set", room=room.jid, mode=mode),
             set_room_mode=(room.jid, mode),
         )
-
-    # -- ignore list (administrators only) -------------------------------
-
-    def _cmd_ignore(self, args: list[str], context: CommandContext) -> CommandResult:
-        denied = self._require_dev(context, "ignore")
-        if denied:
-            return denied
-        if context.ignore_store is None:
-            return CommandResult(handled=True, reply=context.tr("ignore.unavailable"))
-        if not args:
-            return CommandResult(handled=True, reply=self._render_ignore_list(context))
-        kind, value = classify_target(args[0])
-        if not value:
-            return CommandResult(handled=True, reply=context.tr("ignore.usage"))
-        added = context.ignore_store.add(kind, value)
-        key = "ignore.added" if added else "ignore.exists"
-        return CommandResult(handled=True, reply=context.tr(key, target=value, kind=kind))
-
-    def _cmd_unignore(self, args: list[str], context: CommandContext) -> CommandResult:
-        denied = self._require_dev(context, "unignore")
-        if denied:
-            return denied
-        if context.ignore_store is None:
-            return CommandResult(handled=True, reply=context.tr("ignore.unavailable"))
-        if not args:
-            return CommandResult(handled=True, reply=context.tr("ignore.usage"))
-        kind, value = classify_target(args[0])
-        removed = context.ignore_store.remove(kind, value)
-        key = "ignore.removed" if removed else "ignore.not_found"
-        return CommandResult(handled=True, reply=context.tr(key, target=value, kind=kind))
-
-    def _render_ignore_list(self, context: CommandContext) -> str:
-        store = context.ignore_store
-        runtime_entries = store.entries() if store is not None else []
-        config_entries = [
-            ("jid", entry) if "@" in entry else ("domain", entry)
-            for entry in context.config.security.ignored_jids
-        ]
-        config_entries += [("nick", nick) for nick in context.config.security.ignored_nicks]
-        lines = [context.tr("ignore.header")]
-        if not runtime_entries and not config_entries:
-            lines.append("  " + context.tr("ignore.none"))
-        for kind, value in config_entries:
-            lines.append(f"  [{kind}] {value} (config)")
-        for kind, value in runtime_entries:
-            lines.append(f"  [{kind}] {value}")
-        return "\n".join(lines)
 
     # -- developer commands ----------------------------------------------
 
