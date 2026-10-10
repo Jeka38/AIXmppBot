@@ -65,7 +65,10 @@
   "ignore.exists": "{kind} «{target}» уже в игноре.",
   "ignore.removed": "Больше не игнорирую {kind} «{target}».",
   "ignore.not_found": "{kind} «{target}» не найден в списке игнорирования.",
+  "ignore.denied": "Управлять списком игнорирования может только владелец комнаты или администратор бота.",
   "ignore.header": "Список игнорирования:",
+  "ignore.section_room": "Эта комната:",
+  "ignore.section_global": "Глобально:",
   "ignore.none": "(пусто)",
 
   "dev.restricted": "/{command} доступна только администраторам бота.",

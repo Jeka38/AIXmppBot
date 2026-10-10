@@ -28,7 +28,7 @@ from agent.security.authorization import Authorizer
 from agent.security.capabilities import CapabilitySet
 from agent.security.confirmation import PendingActionStore, classify_reply
 from agent.security.credentials import CredentialStore, EnvCredentialStore, Redactor
-from agent.security.ignore_store import IgnoreStore
+from agent.security.ignore_store import GLOBAL_SCOPE, IgnoreStore, scope_for_room
 from agent.skills.base import SkillContext
 from agent.skills.registry import SkillRegistry
 
@@ -117,6 +117,10 @@ class AgentRuntime:
     def room_scope(self, room_jid: str) -> str:
         return self.layout.scope_for_room(room_jid)
 
+    @staticmethod
+    def ignore_scope(room_jid: str) -> str:
+        return scope_for_room(room_jid)
+
     def usage_for(self, scope: str) -> UsageCounter:
         return self._usage.setdefault(scope, UsageCounter())
 
@@ -202,10 +206,10 @@ class AgentRuntime:
         nick: str = "",
     ) -> str | None:
         """Handle a MUC message. Returns reply text or ``None`` if ignored."""
-        if self.authorizer.is_ignored(sender_jid, nick=nick):
+        if self.authorizer.is_ignored(sender_jid, nick=nick, scope=self.ignore_scope(room.jid)):
             log.info("Ignoring MUC message from ignored sender %s/%s", room.jid, nick or sender_jid)
             return None
-        decision = self.authorizer.check_room(room, sender_jid, anonymous=anonymous)
+        decision = self.authorizer.check_room(room, sender_jid, anonymous=anonymous, nick=nick)
         if not decision.allowed:
             log.info(
                 "Ignoring MUC message from unauthorized %s in %s (%s)",
@@ -502,6 +506,7 @@ class AgentRuntime:
             current_room=room,
             affiliation=affiliation,
             ignore_store=self.ignore_store,
+            ignore_scope=(self.ignore_scope(room.jid) if room is not None else GLOBAL_SCOPE),
         )
         result = self.commands.dispatch(text, context)
         if result is None or not result.handled:

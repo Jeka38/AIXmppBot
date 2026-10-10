@@ -197,9 +197,9 @@ rooms automatically.
 | `/persona reset` | Revert to the default persona |
 | `/persona create\|delete\|export\|import` | Manage personas (user in DM, room in MUC) |
 | `/skills` | List enabled skills |
-| `/ignore <jid\|domain\|nick:Name>` | Admin: silently ignore a sender (persisted) |
-| `/unignore <jid\|domain\|nick:Name>` | Admin: remove from the ignore list |
-| `/ignore` | Admin: show the ignore list (config + runtime) |
+| `/ignore <jid\|domain\|nick:Name>` | Admin or room owner: silently ignore a sender (per chat, persisted) |
+| `/unignore <jid\|domain\|nick:Name>` | Admin or room owner: remove from the ignore list |
+| `/ignore` | Admin or room owner: show the ignore list (room + global) |
 | `/mode mention\|all` | Room owner: change the bot's activation mode (usable inside the room) |
 | `/join <room> [nick] [mention\|all]` | Admin: join a public MUC room at runtime |
 | `/leave [room]` | Admin: leave a room |

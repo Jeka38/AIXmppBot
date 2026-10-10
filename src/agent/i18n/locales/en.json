@@ -65,7 +65,10 @@
   "ignore.exists": "{kind} '{target}' is already ignored.",
   "ignore.removed": "No longer ignoring {kind} '{target}'.",
   "ignore.not_found": "{kind} '{target}' was not in the runtime ignore list.",
+  "ignore.denied": "Only the room owner or a bot administrator can manage the ignore list.",
   "ignore.header": "Ignore list:",
+  "ignore.section_room": "This room:",
+  "ignore.section_global": "Global:",
   "ignore.none": "(empty)",
 
   "dev.restricted": "/{command} is available to bot administrators only.",
