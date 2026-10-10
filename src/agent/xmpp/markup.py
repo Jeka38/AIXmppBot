@@ -71,14 +71,41 @@ _INLINE: list[tuple[SpanType, re.Pattern[str]]] = [
 _FENCE = re.compile(r"^```([\w.+#-]*)\s*$")
 _LIST_ITEM = re.compile(r"^(\s*)([-*+]|\d+[.)])\s+(.*)$")
 _QUOTE = re.compile(r"^>\s?(.*)$")
+_TABLE_ROW = re.compile(r"^\s*\|(.+)\|\s*$")
+_TABLE_SEP = re.compile(r"^\s*\|?[\s:|-]+\|?\s*$")
+_HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
+# Loose HTML the model sometimes emits; we keep the text, drop the tags.
+_HTML_TAG = re.compile(r"</?[a-zA-Z][^>]*>")
+_HTML_LI = re.compile(r"<li[^>]*>", re.I)
 
 
 def markdown_to_markup(text: str) -> MarkupResult:
     """Parse *text* into a plain body plus XEP-0394 markup elements."""
     builder = _Builder()
-    builder.add_text(text)
+    builder.add_text(_normalize_html(text))
     builder.finish()
     return MarkupResult(body=builder.body, elements=builder.elements)
+
+
+def _normalize_html(text: str) -> str:
+    """Convert stray HTML the model emits into Markdown, then drop any tags.
+
+    Models sometimes wrap content in ``<ul><li>…</li></ul>`` or ``<br>``. Clients
+    that only render the plain body must never see raw tags. Table rows are left
+    for the table parser, which strips tags per cell.
+    """
+    out: list[str] = []
+    for line in text.split("\n"):
+        if _TABLE_ROW.match(line):
+            out.append(line)
+            continue
+        line = re.sub(r"<li[^>]*>", "\n- ", line, flags=re.I)
+        line = re.sub(r"</li\s*>", "", line, flags=re.I)
+        line = re.sub(r"<br\s*/?>", "\n", line, flags=re.I)
+        line = re.sub(r"</p\s*>", "\n", line, flags=re.I)
+        line = _HTML_TAG.sub("", line)
+        out.append(line)
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(out))
 
 
 class _Builder:
@@ -105,6 +132,16 @@ class _Builder:
             if _QUOTE.match(line):
                 index = self._consume_blockquote(lines, index)
                 continue
+            if self._is_table_start(lines, index):
+                index = self._consume_table(lines, index)
+                continue
+            heading = _HEADING.match(line)
+            if heading:
+                self._emit_inline(heading.group(2))
+                if index != len(lines) - 1:
+                    self._append("\n")
+                index += 1
+                continue
             if _LIST_ITEM.match(line):
                 index = self._consume_list(lines, index)
                 continue
@@ -114,6 +151,51 @@ class _Builder:
             index += 1
 
     # -- block elements --------------------------------------------------
+
+    @staticmethod
+    def _is_table_start(lines: list[str], index: int) -> bool:
+        """A table is a header row followed by a ``|---|---|`` separator."""
+        if index + 1 >= len(lines):
+            return False
+        if not _TABLE_ROW.match(lines[index]):
+            return False
+        return bool(_TABLE_SEP.match(lines[index + 1]))
+
+    def _consume_table(self, lines: list[str], start: int) -> int:
+        """Render a Markdown table as ``header: value`` lines.
+
+        XEP-0394 has no table element, and a raw ``| a | b |`` grid is
+        unreadable in clients that only show plain text, so we flatten each row
+        into a readable ``header: cell`` block.
+        """
+        headers = self._split_row(lines[start])
+        index = start + 2  # skip header and separator
+        while index < len(lines) and _TABLE_ROW.match(lines[index]):
+            cells = self._split_row(lines[index])
+            pairs = [
+                f"{header}: {cell}".strip(": ").strip() if header else cell
+                for header, cell in zip(headers, cells, strict=False)
+            ]
+            self._emit_inline("; ".join(p for p in pairs if p))
+            index += 1
+            if index < len(lines) and _TABLE_ROW.match(lines[index]):
+                self._append("\n")
+        if index < len(lines):
+            self._append("\n")
+        return index
+
+    @staticmethod
+    def _split_row(line: str) -> list[str]:
+        inner = _TABLE_ROW.match(line)
+        if inner is None:
+            return []
+        cells = []
+        for cell in inner.group(1).split("|"):
+            # Flatten any inline HTML list inside a cell into a comma list.
+            cell = re.sub(r"</li\s*>", ", ", cell, flags=re.I)
+            cell = _HTML_TAG.sub("", cell).strip(" ,")
+            cells.append(cell.strip())
+        return cells
 
     def _consume_code_block(self, lines: list[str], start: int, language: str) -> int:
         index = start + 1

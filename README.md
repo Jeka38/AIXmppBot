@@ -27,8 +27,12 @@ loop with tools, and persists per-user / per-room history and memory.
 - **XEP-0394 message markup**: the assistant's Markdown (`**bold**`, `*italic*`,
   `` `code` ``, `~~deleted~~`, fenced code blocks, lists, quotes) is sent as a
   plain `<body>` plus a `urn:xmpp:markup:0` element, so clients render
-  formatting without XHTML-IM's spoofing/injection risks. Clients that do not
-  support markup still see clean plain text.
+  formatting without XHTML-IM's spoofing/injection risks.
+- **XEP-0071 XHTML-IM**: the same content is also sent as `<html/>`, because
+  popular clients (Conversations, Monocles) render XHTML-IM but not XEP-0394.
+  Clients that support neither still see clean plain text: tables are flattened,
+  HTML tags and Markdown artifacts (`#`, `|`) are stripped, and all text is
+  HTML-escaped.
 - **Presence tracking** and a transport-agnostic presence event.
 - **Agentic loop**: LLM → tool → result → LLM, with a bounded tool-round limit
   and error isolation (a failing skill becomes a tool result, never a crash).

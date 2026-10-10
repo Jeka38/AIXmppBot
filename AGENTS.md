@@ -125,6 +125,13 @@ errors, so regressions should be treated as failures.
   — do not drop those branches or bold/ordered lists silently lose their type.
   Offsets are unicode code points into the plain body; keep body and offsets in
   sync when editing the converter.
+- Every formatted message also carries XHTML-IM (`xmpp/xhtml.py`,
+  XEP-0071) because Conversations/Monocles do not render XEP-0394. Both render
+  from the same `MarkupResult`. The plain `<body>` must stay clean: models
+  sometimes emit Markdown tables and inline HTML, so `markup.py` flattens tables
+  to `header: cell` lines, strips headings (`#`), and `_normalize_html` removes
+  stray tags. All text is HTML-escaped in `xhtml.py`; never interpolate raw model
+  text into XHTML.
 - Context budgeting is token-based via `TokenEstimator` (tiktoken when installed,
   char heuristic otherwise). `ContextBuilder` never drops the system prompt and
   never trims to zero messages. `Compactor` (Phase 2) replaces the oldest events

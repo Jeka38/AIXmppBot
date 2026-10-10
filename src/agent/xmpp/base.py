@@ -19,6 +19,7 @@ from agent.config.models import AppConfig, RoomConfig
 from agent.errors import TimeoutError_, XMPPError
 from agent.xmpp.events import MessageEvent, MUCMessageEvent, PresenceEvent
 from agent.xmpp.markup import MarkupResult, MarkupSpan, markdown_to_markup
+from agent.xmpp.xhtml import render_xhtml_im
 
 MessageType = Literal["chat", "error", "groupchat", "headline", "normal"]
 
@@ -289,7 +290,15 @@ class BaseTransport:
             return
         message = self.xmpp.make_message(mto=JID(to_jid), mbody=markup.body, mtype=message_type)
         self._apply_markup(message, markup)
+        self._apply_xhtml_im(message, body)
         message.send()
+
+    def _apply_xhtml_im(self, message: Any, body: str) -> None:
+        """Attach XHTML-IM (XEP-0071) for clients that do not support XEP-0394."""
+        try:
+            message["html"]["body"] = render_xhtml_im(body)
+        except Exception:  # noqa: BLE001 - formatting must never block a reply
+            log.debug("Failed to build XHTML-IM, sending markup/plain only")
 
     def _apply_markup(self, message: Any, markup: MarkupResult) -> None:
         """Attach XEP-0394 elements to a message stanza."""
