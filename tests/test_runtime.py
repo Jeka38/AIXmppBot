@@ -364,3 +364,60 @@ async def test_persona_create_offered_even_with_restricted_persona(tmp_path) -> 
     )
     allowed = runtime._allowed_skills(None, {"web_search"})  # noqa: SLF001
     assert allowed is not None and "persona_create" in allowed
+
+
+async def test_room_owner_ignores_nick_via_command(tmp_path) -> None:
+    from agent.security.ignore_store import IgnoreStore
+
+    config = make_config()
+    layout = DataLayout(tmp_path / "data")
+    store = FilesystemSessionStore(layout.memory_dir)
+    ignore = IgnoreStore(tmp_path / "ignored.json")
+    runtime = AgentRuntime(
+        config,
+        FakeRouter(FakeLLMClient()),  # type: ignore[arg-type]
+        SkillRegistry(),
+        store,
+        layout,
+        redactor=Redactor(),
+        ignore_store=ignore,
+    )
+    room = RoomConfig(jid="room@conference.example.com", nick="Bot", activation="all")
+
+    # Owner bans a nick in this room.
+    reply = await runtime.handle_muc(
+        room,
+        "room@conference.example.com/Owner",
+        "/ignore nick:Flooder",
+        mentioned=False,
+        affiliation="owner",
+        nick="Owner",
+    )
+    assert reply is not None and ignore.room_nicks(room.jid) == ["flooder"]
+
+    # The banned nick is now silent in this room.
+    assert (
+        await runtime.handle_muc(
+            room,
+            "room@conference.example.com/Flooder",
+            "hello",
+            mentioned=True,
+            affiliation="member",
+            nick="Flooder",
+        )
+        is None
+    )
+
+    # A different nick still gets a reply.
+    client = FakeLLMClient()
+    client.queue_text("hi there")
+    runtime.router = FakeRouter(client)  # type: ignore[assignment]
+    reply = await runtime.handle_muc(
+        room,
+        "room@conference.example.com/Alice",
+        "hello",
+        mentioned=True,
+        affiliation="member",
+        nick="Alice",
+    )
+    assert reply == "hi there"

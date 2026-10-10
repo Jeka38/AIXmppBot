@@ -165,6 +165,13 @@ errors, so regressions should be treated as failures.
   senders are auto-approved; everyone else is rejected and with no decider
   nothing is approved (fail closed). Gated by
   `security.auto_authorize_subscriptions`.
+- Ignore list (`security/ignore_store.py`, `data/state/ignored.json`) follows
+  how XMPP exposes identity: **JIDs and domains are global** (admin-only,
+  managed in a DM), **nicks are per-room** (`rooms: {<room-jid>: [nicks]}`,
+  managed by the room owner inside the room). `Authorizer.is_ignored_jid` /
+  `is_ignored_nick` feed `check()` and `check_room(..., nick=)`; the runtime
+  passes the sender's nick to `check_room`. There are no config-level ignore
+  fields — only the runtime store.
 - Room management (`/join`, `/leave`, `/rooms`) is admin-only and flows through
   `RoomController` (`AgentApplication` implements it). The runtime never imports
   Slixmpp: it calls `Runtime.rooms.join_room/leave_room`, and the app layer

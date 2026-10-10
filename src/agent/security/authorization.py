@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from agent.config.models import RoomConfig, SecurityConfig
+from agent.security.ignore_store import IgnoreStore
 
 
 def bare_jid(jid: str) -> str:
@@ -34,18 +35,37 @@ class Decision:
 class Authorizer:
     """Evaluates the global and per-room allowlists."""
 
-    def __init__(self, security: SecurityConfig) -> None:
+    def __init__(
+        self,
+        security: SecurityConfig,
+        *,
+        ignore_store: IgnoreStore | None = None,
+    ) -> None:
         self.security = security
+        self.ignore_store = ignore_store
         self._allowed_jids = {bare_jid(jid) for jid in security.allowed_jids}
         self._allowed_domains = {d.strip().lower() for d in security.allowed_domains}
         self._dev_jids = {bare_jid(jid) for jid in security.dev_command_jids}
         self._wildcard = security.allow_wildcard and "*" in self._allowed_domains
+
+    def is_ignored_jid(self, jid: str) -> bool:
+        """Whether the JID is globally ignored (runtime store).
+
+        Config-level ignoring has been removed; only the runtime store applies.
+        """
+        return self.ignore_store is not None and self.ignore_store.is_ignored_jid(jid)
+
+    def is_ignored_nick(self, room_jid: str, nick: str) -> bool:
+        """Whether the nick is ignored in this room (per-room, runtime store)."""
+        return self.ignore_store is not None and self.ignore_store.is_ignored_nick(room_jid, nick)
 
     def check(self, jid: str) -> Decision:
         """Decide whether *jid* may interact with the agent globally."""
         bare = bare_jid(jid)
         if not bare:
             return Decision(False, "empty JID")
+        if self.is_ignored_jid(bare):
+            return Decision(False, "sender is ignored")
         if bare in self._allowed_jids:
             return Decision(True, "explicit JID allowlist")
         if self._wildcard:
@@ -62,11 +82,20 @@ class Authorizer:
         """Developer commands require an explicit JID entry (never a domain)."""
         return bare_jid(jid) in self._dev_jids
 
-    def check_room(self, room: RoomConfig, jid: str, *, anonymous: bool = False) -> Decision:
-        """Decide whether *jid* may invoke the agent inside a MUC room.
+    def check_room(
+        self,
+        room: RoomConfig,
+        jid: str,
+        *,
+        anonymous: bool = False,
+        nick: str = "",
+    ) -> Decision:
+        """Decide whether *jid*/*nick* may invoke the agent inside a MUC room.
 
         Policy (SPEC §52):
 
+        * A globally ignored JID is denied everywhere.
+        * A nick ignored in *this* room is denied (public rooms hide the real JID).
         * An explicit ``room.allowed_jids`` is authoritative: the real JID must
           match. Anonymous occupants — whose real JID the server hides — cannot
           be verified and are therefore denied.
@@ -75,6 +104,11 @@ class Authorizer:
         * Otherwise the room itself is the trusted scope (it had to be joined
           explicitly by an administrator), so any occupant may talk to the bot.
         """
+        if self.is_ignored_jid(bare_jid(jid)):
+            return Decision(False, "sender is ignored")
+        if nick and self.is_ignored_nick(room.jid, nick):
+            return Decision(False, "nick is ignored in this room")
+
         if not room.allowed_jids and not room.restrict_to_allowed_jids:
             return Decision(True, "room is a trusted scope")
 

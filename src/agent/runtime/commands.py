@@ -14,6 +14,7 @@ from agent.config.models import AppConfig, RoomConfig
 from agent.i18n import DEFAULT_LOCALE, Translator, get_translator
 from agent.runtime.rooms import RoomController
 from agent.runtime.sessions import Session
+from agent.security.ignore_store import IgnoreStore, classify_target
 
 
 class PersonaCommands(Protocol):
@@ -49,6 +50,8 @@ class CommandContext:
     current_room: RoomConfig | None = None
     #: The sender's MUC affiliation in ``current_room`` (owner/admin/...).
     affiliation: str = ""
+    #: Runtime ignore-list store (``/ignore``). ``None`` disables the commands.
+    ignore_store: IgnoreStore | None = None
 
     def tr(self, key: str, /, **kwargs: object) -> str:
         translator = self.translator or get_translator()
@@ -111,6 +114,8 @@ class CommandHandler:
             "leave": self._cmd_leave,
             "rooms": self._cmd_rooms,
             "mode": self._cmd_mode,
+            "ignore": self._cmd_ignore,
+            "unignore": self._cmd_unignore,
             "debug": self._cmd_debug,
             "context": self._cmd_context,
             "history": self._cmd_history,
@@ -350,6 +355,104 @@ class CommandHandler:
             reply=context.tr("room.mode.set", room=room.jid, mode=mode),
             set_room_mode=(room.jid, mode),
         )
+
+    # -- ignore list -----------------------------------------------------
+
+    def _cmd_ignore(self, args: list[str], context: CommandContext) -> CommandResult:
+        """Add an ignore entry.
+
+        * ``nick:Name`` — from inside a room, by its owner (per-room).
+        * ``jid`` / ``domain`` — from a DM, by a bot administrator (global).
+        """
+        if not args:
+            return CommandResult(handled=True, reply=self._render_ignore_list(context))
+        kind, value = classify_target(args[0])
+        if not value:
+            return CommandResult(handled=True, reply=context.tr("ignore.usage"))
+        if context.ignore_store is None:
+            return CommandResult(handled=True, reply=context.tr("ignore.unavailable"))
+
+        if kind == "nick":
+            return self._ignore_nick(context, value)
+        return self._ignore_jid(context, kind, value)
+
+    def _ignore_nick(self, context: CommandContext, nick: str) -> CommandResult:
+        room = context.current_room
+        if room is None:
+            return CommandResult(handled=True, reply=context.tr("ignore.nick_in_dm"))
+        if not context.is_dev and context.affiliation != "owner":
+            return CommandResult(handled=True, reply=context.tr("ignore.nick_owner_only"))
+        assert context.ignore_store is not None
+        added = context.ignore_store.add_nick(room.jid, nick)
+        key = "ignore.added" if added else "ignore.exists"
+        return CommandResult(
+            handled=True, reply=context.tr(key, kind="nick", target=nick, room=room.jid)
+        )
+
+    def _ignore_jid(self, context: CommandContext, kind: str, value: str) -> CommandResult:
+        if not context.is_dev:
+            return CommandResult(handled=True, reply=context.tr("ignore.jid_admin_only"))
+        assert context.ignore_store is not None
+        added = (
+            context.ignore_store.add_jid(value)
+            if kind == "jid"
+            else context.ignore_store.add_domain(value)
+        )
+        key = "ignore.added" if added else "ignore.exists"
+        return CommandResult(handled=True, reply=context.tr(key, kind=kind, target=value, room=""))
+
+    def _cmd_unignore(self, args: list[str], context: CommandContext) -> CommandResult:
+        if not args:
+            return CommandResult(handled=True, reply=context.tr("ignore.usage"))
+        kind, value = classify_target(args[0])
+        if context.ignore_store is None:
+            return CommandResult(handled=True, reply=context.tr("ignore.unavailable"))
+
+        if kind == "nick":
+            room = context.current_room
+            if room is None:
+                return CommandResult(handled=True, reply=context.tr("ignore.nick_in_dm"))
+            if not context.is_dev and context.affiliation != "owner":
+                return CommandResult(handled=True, reply=context.tr("ignore.nick_owner_only"))
+            removed = context.ignore_store.remove_nick(room.jid, value)
+            key = "ignore.removed" if removed else "ignore.not_found"
+            return CommandResult(
+                handled=True, reply=context.tr(key, kind="nick", target=value, room=room.jid)
+            )
+
+        if not context.is_dev:
+            return CommandResult(handled=True, reply=context.tr("ignore.jid_admin_only"))
+        removed = (
+            context.ignore_store.remove_jid(value)
+            if kind == "jid"
+            else context.ignore_store.remove_domain(value)
+        )
+        key = "ignore.removed" if removed else "ignore.not_found"
+        return CommandResult(handled=True, reply=context.tr(key, kind=kind, target=value, room=""))
+
+    def _render_ignore_list(self, context: CommandContext) -> str:
+        store = context.ignore_store
+        lines = [context.tr("ignore.header")]
+        if store is None:
+            lines.append("  " + context.tr("ignore.none"))
+            return "\n".join(lines)
+
+        room = context.current_room
+        if room is not None:
+            nicks = store.room_nicks(room.jid)
+            lines.append("  " + context.tr("ignore.section_room", room=room.jid))
+            if nicks:
+                lines.extend(f"    [nick] {n}" for n in nicks)
+            else:
+                lines.append("    " + context.tr("ignore.none"))
+        if context.is_dev:
+            lines.append("  " + context.tr("ignore.section_global"))
+            if store.jids or store.domains:
+                lines.extend(f"    [jid] {j}" for j in sorted(store.jids))
+                lines.extend(f"    [domain] {d}" for d in sorted(store.domains))
+            else:
+                lines.append("    " + context.tr("ignore.none"))
+        return "\n".join(lines)
 
     # -- developer commands ----------------------------------------------
 
