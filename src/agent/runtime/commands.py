@@ -209,17 +209,6 @@ class CommandHandler:
                 return CommandResult(
                     handled=True, reply=context.tr("persona.deleted", name=rest[0])
                 )
-            if sub == "export":
-                if not rest:
-                    return CommandResult(handled=True, reply=context.tr("persona.usage.export"))
-                return CommandResult(handled=True, reply=self._export_persona(context, rest[0]))
-            if sub == "import":
-                if len(rest) < 2:
-                    return CommandResult(handled=True, reply=context.tr("persona.usage.import"))
-                self._import_persona(context, rest[0], " ".join(rest[1:]))
-                return CommandResult(
-                    handled=True, reply=context.tr("persona.imported", name=rest[0])
-                )
         except Exception as exc:  # noqa: BLE001 - report, never crash
             return CommandResult(handled=True, reply=context.tr("persona.error", error=exc))
 
@@ -245,22 +234,6 @@ class CommandHandler:
         if delete is None:
             raise RuntimeError("This persona backend does not support deletion")
         delete(context.jid, name)
-
-    def _export_persona(self, context: CommandContext, name: str) -> str:
-        manager = context.personas
-        assert manager is not None
-        export = getattr(manager, "export", None)
-        if export is None:
-            raise RuntimeError("This persona backend does not support export")
-        return str(export(context.jid, name))
-
-    def _import_persona(self, context: CommandContext, name: str, payload: str) -> None:
-        manager = context.personas
-        assert manager is not None
-        importer = getattr(manager, "import_", None)
-        if importer is None:
-            raise RuntimeError("This persona backend does not support import")
-        importer(context.jid, name, payload)
 
     # -- skills ----------------------------------------------------------
 
@@ -361,12 +334,13 @@ class CommandHandler:
     def _cmd_ignore(self, args: list[str], context: CommandContext) -> CommandResult:
         """Add an ignore entry.
 
-        * ``nick:Name`` — from inside a room, by its owner (per-room).
+        * ``Name`` / ``nick:Name`` / ``@Name`` — from inside a room, by its owner
+          (per-room). The bare form is the natural way for a nick.
         * ``jid`` / ``domain`` — from a DM, by a bot administrator (global).
         """
         if not args:
             return CommandResult(handled=True, reply=self._render_ignore_list(context))
-        kind, value = classify_target(args[0])
+        kind, value = classify_target(args[0], in_room=context.current_room is not None)
         if not value:
             return CommandResult(handled=True, reply=context.tr("ignore.usage"))
         if context.ignore_store is None:
@@ -404,7 +378,7 @@ class CommandHandler:
     def _cmd_unignore(self, args: list[str], context: CommandContext) -> CommandResult:
         if not args:
             return CommandResult(handled=True, reply=context.tr("ignore.usage"))
-        kind, value = classify_target(args[0])
+        kind, value = classify_target(args[0], in_room=context.current_room is not None)
         if context.ignore_store is None:
             return CommandResult(handled=True, reply=context.tr("ignore.unavailable"))
 

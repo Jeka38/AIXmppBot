@@ -159,14 +159,21 @@ def _clean_set(raw: object) -> set[str]:
     return {str(v).strip().lower() for v in raw if str(v).strip()}
 
 
-def classify_target(raw: str) -> tuple[IgnoreKind, str]:
+def classify_target(raw: str, *, in_room: bool = False) -> tuple[IgnoreKind, str]:
     """Infer the kind of an ``/ignore`` target.
 
-    ``nick:Name`` → nick, anything with ``@`` → JID, otherwise a domain.
+    ``nick:Name`` → nick; anything with ``@`` → JID; otherwise a domain — except
+    inside a room, where a bare word (or ``@Name``) names a fellow occupant.
+    Global JID/domain entries are admin-only and are managed from a DM, so in a
+    room the only sensible bare target is the local nick.
     """
     value = raw.strip()
     if value.lower().startswith("nick:"):
         return "nick", value[5:].strip().lower()
+    if in_room:
+        candidate = value[1:] if value.startswith("@") else value
+        if "@" not in candidate:
+            return "nick", candidate.strip().lower()
     if "@" in value:
         return "jid", value.split("/", 1)[0].strip().lower()
     return "domain", value.lower()

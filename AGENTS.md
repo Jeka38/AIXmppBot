@@ -6,9 +6,14 @@
 for requirements, TOML config formats, directory layout, and the Definition of
 Done (§67). Read it before implementing a new phase.
 
-**Phases 1–2 are implemented** under `src/agent/`. Phases 3–7 are not started.
-Do not add a feature as if implemented unless it is genuinely working — stage
-unimplemented work explicitly (SPEC §62).
+**Phases 1–2 are implemented** under `src/agent/`, plus part of Phase 3:
+per-skill capabilities, confirmations and prompt-injection hardening are live.
+Still missing from Phase 3 (do not claim or scaffold them as working):
+GitHub/REST/JIRA/Front skills, generated skills, cost tracking, and **quota
+enforcement** — `QuotaConfig` and `QuotaError` exist but nothing consumes them,
+so `[quotas]` has no effect. Phases 4–7 are not started. Do not add a feature as
+if implemented unless it is genuinely working — stage unimplemented work
+explicitly (SPEC §62). The README roadmap table is the current status view.
 
 Goal: a production-oriented XMPP AI agent in Python 3.12–3.13 (Slixmpp 1.10.0,
 asyncio, Pydantic, TOML config): C2S + XEP-0114 component modes, MUC, agentic
@@ -75,6 +80,18 @@ LLM loop, skills, memory, personas, MCP, sub-agents, scheduler.
 Run ruff and mypy clean before finishing a change; both currently pass with zero
 errors, so regressions should be treated as failures.
 
+## Testing notes
+
+- `pyproject.toml` sets `asyncio_mode = "auto"` (any `async def test_*` runs
+  without `@pytest.mark.asyncio`), `pythonpath = ["src"]` and `testpaths = ["tests"]`.
+- Reuse the helpers in `tests/conftest.py`: `make_config(**overrides)` builds a
+  minimal valid `AppConfig`, and `FakeLLMClient` scripts LLM replies
+  (`queue_text`, `queue_tool`) instead of hitting a provider. There is no
+  `tests/__init__.py`.
+- The suite is fully offline; do not add tests that need a real XMPP server,
+  LLM key or network. Only `tests/test_xmpp*.py` / `test_markup.py` /
+  `test_xhtml.py` / `test_oob.py` import Slixmpp — the runtime tests must not.
+
 ## Architecture facts not obvious from filenames
 
 - XMPP is a transport only: `src/agent/xmpp/` is the sole Slixmpp boundary;
@@ -132,12 +149,6 @@ errors, so regressions should be treated as failures.
   to `header: cell` lines, strips headings (`#`), and `_normalize_html` removes
   stray tags. All text is HTML-escaped in `xhtml.py`; never interpolate raw model
   text into XHTML.
-- Long answers (over `[paste] threshold`, default 250 chars) are uploaded to a
-  paste service (`net/paste.py`, `PasteService`) and sent as a link
-  (`paste.notice`). Supports Pastefy (field `f`, URL in the response body, optional
-  Bearer `token`) and MicroBin (field `content`, URL in a 302 `Location`). A
-  failed upload falls back to sending the full text. The paste token is
-  registered with the redactor.
 - Context budgeting is token-based via `TokenEstimator` (tiktoken when installed,
   char heuristic otherwise). `ContextBuilder` never drops the system prompt and
   never trims to zero messages. `Compactor` (Phase 2) replaces the oldest events

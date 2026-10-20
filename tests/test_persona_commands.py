@@ -37,12 +37,6 @@ class FakePersonaCommands:
     def delete(self, jid: str, name: str) -> None:
         self.manager.delete_user_persona(jid, name)
 
-    def export(self, jid: str, name: str) -> str:
-        return self.manager.export_user_persona(jid, name)
-
-    def import_(self, jid: str, name: str, payload: str) -> None:
-        self.manager.import_user_persona(jid, name, payload)
-
 
 def _setup(tmp_path: Path):
     personas_dir = tmp_path / "personas"

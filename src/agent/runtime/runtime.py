@@ -617,14 +617,3 @@ class _PersonaCommandAdapter:
             self.manager.delete_room_persona(self.room_jid, name)
         else:
             self.manager.delete_user_persona(jid, name)
-
-    def export(self, jid: str, name: str) -> str:
-        if self.room_jid is not None:
-            return self.manager.export_room_persona(self.room_jid, name)
-        return self.manager.export_user_persona(jid, name)
-
-    def import_(self, jid: str, name: str, payload: str) -> None:
-        if self.room_jid is not None:
-            self.manager.import_room_persona(self.room_jid, name, payload)
-        else:
-            self.manager.import_user_persona(jid, name, payload)

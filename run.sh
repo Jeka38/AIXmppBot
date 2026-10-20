@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launch the agent without Docker.
+# Launch the agent from the project venv.
 #
 #   ./run.sh                 # uses config/agent.toml and .env
 #   ./run.sh --check-config  # validate configuration and exit

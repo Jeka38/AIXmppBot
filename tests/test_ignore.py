@@ -28,6 +28,17 @@ def test_classify_target() -> None:
     assert classify_target("nick:Flooder") == ("nick", "flooder")
 
 
+def test_classify_target_in_room_prefers_nick() -> None:
+    # Inside a room a bare word (or @Name) is a nick, not a domain/JID.
+    assert classify_target("Flooder", in_room=True) == ("nick", "flooder")
+    assert classify_target("@Flooder", in_room=True) == ("nick", "flooder")
+    assert classify_target("nick:Flooder", in_room=True) == ("nick", "flooder")
+    # An explicit JID stays a JID even in a room.
+    assert classify_target("user@example.com", in_room=True) == ("jid", "user@example.com")
+    # Without room context a bare word is still a domain.
+    assert classify_target("Flooder") == ("domain", "flooder")
+
+
 # -- global JID/domain -------------------------------------------------------
 
 
@@ -149,6 +160,27 @@ def test_room_owner_ignores_nick(tmp_path: Path) -> None:
         tmp_path, is_dev=False, room=RoomConfig(jid=ROOM, nick="Bot"), affiliation="owner"
     )
     result = handler.dispatch("/ignore nick:Flooder", context)
+    assert result is not None and "Ignoring" in result.reply
+    assert context.ignore_store is not None
+    assert context.ignore_store.room_nicks(ROOM) == ["flooder"]
+
+
+def test_room_owner_ignores_bare_nick(tmp_path: Path) -> None:
+    """A bare word inside a room is a nick, not a domain (regression)."""
+    handler, context = _context(
+        tmp_path, is_dev=False, room=RoomConfig(jid=ROOM, nick="Bot"), affiliation="owner"
+    )
+    result = handler.dispatch("/ignore Flooder", context)
+    assert result is not None and "Ignoring" in result.reply
+    assert context.ignore_store is not None
+    assert context.ignore_store.room_nicks(ROOM) == ["flooder"]
+
+
+def test_room_owner_ignores_at_nick(tmp_path: Path) -> None:
+    handler, context = _context(
+        tmp_path, is_dev=False, room=RoomConfig(jid=ROOM, nick="Bot"), affiliation="owner"
+    )
+    result = handler.dispatch("/ignore @Flooder", context)
     assert result is not None and "Ignoring" in result.reply
     assert context.ignore_store is not None
     assert context.ignore_store.room_nicks(ROOM) == ["flooder"]

@@ -33,10 +33,6 @@ loop with tools, and persists per-user / per-room history and memory.
   Clients that support neither still see clean plain text: tables are flattened,
   HTML tags and Markdown artifacts (`#`, `|`) are stripped, and all text is
   HTML-escaped.
-- **Long answers** (over `[paste] threshold` characters, default 250) are
-  uploaded to a paste service (MicroBin-compatible, e.g. `paste.ubunix.ru`) and
-  sent as a short link instead of a wall of text. If the upload fails, the full
-  answer is sent so nothing is lost.
 - **Presence tracking** and a transport-agnostic presence event.
 - **Agentic loop**: LLM → tool → result → LLM, with a bounded tool-round limit
   and error isolation (a failing skill becomes a tool result, never a crash).
@@ -74,7 +70,7 @@ loop with tools, and persists per-user / per-room history and memory.
   text, PDF → text (via optional `pypdf`); temp files cleaned after each turn.
 - **Personas**: directory-based definitions with per-user resolution
   (`user → user-persona → global persona → global`), `/persona` commands,
-  create/delete/export/import, per-user isolation and configurable limits.
+  create/delete, per-user isolation and configurable limits.
 - **Context compaction**: when a transcript exceeds its token budget, the oldest
   events are folded into an LLM-generated summary that preserves facts,
   decisions, preferences, tool results and MUC authorship.
@@ -198,10 +194,10 @@ rooms automatically.
 | `/persona list` | List available personas |
 | `/persona <name>` | Switch persona |
 | `/persona reset` | Revert to the default persona |
-| `/persona create\|delete\|export\|import` | Manage personas (user in DM, room in MUC) |
+| `/persona create\|delete` | Manage personas (user in DM, room in MUC) |
 | `/skills` | List enabled skills |
 | `/ignore user@domain \| domain` | Admin (in DM): ignore a JID or domain everywhere |
-| `/ignore nick:Name` | Room owner (inside the room): ignore a nick in this room |
+| `/ignore Nick` (or `nick:Nick` / `@Nick`) | Room owner (inside the room): ignore a nick in this room |
 | `/unignore <same>` | Remove an ignore entry |
 | `/ignore` | Show the ignore list (room + global) |
 | `/mode mention\|all` | Room owner: change the bot's activation mode (usable inside the room) |
@@ -246,14 +242,8 @@ data/memory/
 Sessions are JSONL; memory is Markdown. All access is confined to the configured
 data directory, and each JID / room can only read its own scope.
 
-## Docker
-
-```bash
-docker compose up -d
-```
-
-Secrets are supplied through the environment (`.env`); they are never baked
-into the image.
+Secrets are supplied through the environment (`.env`); they are never committed
+to the repository.
 
 ## Security model
 
@@ -299,7 +289,7 @@ isolation (see [`SPEC.md`](SPEC.md) §57).
 | 3 | Per-skill capabilities, confirmations, prompt-injection hardening, REST skill engine | **In progress** (GitHub/JIRA/Front, quotas, generated skills deferred) |
 | 4 | Scheduler, presence triggers, webhooks, PubSub, PEP, advanced MUC | Planned |
 | 5 | Sub-agents, MCP, agent definitions, remote agent discovery/protocol | Planned |
-| 6 | XEP-0198, XEP-0115, XEP-0280, PostgreSQL, distributed scheduler, production Docker | Planned |
+| 6 | XEP-0198, XEP-0115, XEP-0280, PostgreSQL, distributed scheduler, production deployment | Planned |
 | 7 | Wasm sandbox for generated skills | Planned |
 
 ## Personas

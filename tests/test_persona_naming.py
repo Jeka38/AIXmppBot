@@ -103,16 +103,3 @@ def test_traversal_name_rejected_with_localised_error(tmp_path: Path) -> None:
     # No directory escaped the user's persona root.
     personas_root = manager.layout.user_personas_dir("alice@example.com")
     assert not (personas_root / ".." / "escape").exists()
-
-
-def test_cyrillic_export_import(tmp_path: Path) -> None:
-    manager = _manager(tmp_path)
-    manager.create_user_persona("alice@example.com", "Помощник")
-    directory = manager.layout.user_personas_dir("alice@example.com") / "помощник"
-    (directory / "identity.md").write_text("Я помощник.", encoding="utf-8")
-
-    payload = manager.export_user_persona("alice@example.com", "Помощник")
-    manager.import_user_persona("bob@example.com", "Помощник", payload)
-
-    bob_dir = manager.layout.user_personas_dir("bob@example.com") / "помощник"
-    assert "Я помощник." in (bob_dir / "identity.md").read_text(encoding="utf-8")

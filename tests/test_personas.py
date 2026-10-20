@@ -139,22 +139,6 @@ def test_invalid_persona_name_rejected(tmp_path: Path, globals_dir: Path) -> Non
         manager.create_user_persona("alice@example.com", "../escape")
 
 
-def test_export_import_roundtrip(tmp_path: Path, globals_dir: Path) -> None:
-    manager = _manager(tmp_path, globals_dir)
-    manager.create_user_persona("alice@example.com", "writer")
-    user_dir = manager.layout.user_personas_dir("alice@example.com") / "writer"
-    (user_dir / "identity.md").write_text("I am a creative writer.", encoding="utf-8")
-
-    payload = manager.export_user_persona("alice@example.com", "writer")
-    manager.import_user_persona("bob@example.com", "writer", payload)
-
-    bob_dir = manager.layout.user_personas_dir("bob@example.com") / "writer"
-    assert "creative writer" in (bob_dir / "identity.md").read_text(encoding="utf-8")
-    # Alice and Bob each own their copy independently.
-    assert "writer" in manager.list_user_personas("bob@example.com")
-    assert "writer" in manager.list_user_personas("alice@example.com")
-
-
 # -- room personas -----------------------------------------------------------
 
 

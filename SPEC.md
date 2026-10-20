@@ -17,7 +17,6 @@
 * optional: Ollama
 * optional: MCP
 * optional: PostgreSQL для production deployment
-* Docker/Docker Compose для deployment
 
 Не использовать Rust, Node.js или JavaScript runtime как обязательную часть системы.
 
@@ -574,8 +573,6 @@ context.md
 ```text
 /persona create <name>
 /persona delete <name>
-/persona export <name>
-/persona import
 ```
 
 Создание пользовательских personas должно быть отключаемым:
@@ -1853,8 +1850,7 @@ fluux_agent_python/
 ├── pyproject.toml
 ├── README.md
 ├── LICENSE
-├── Dockerfile
-├── docker-compose.yml
+├── run.sh
 ├── .env.example
 │
 ├── config/
@@ -2068,7 +2064,7 @@ answer
 * stronger persistence;
 * PostgreSQL;
 * distributed scheduler;
-* production Docker deployment.
+* production deployment (systemd / process supervisor).
 
 ---
 
@@ -2127,14 +2123,18 @@ External webpage cannot override system prompt.
 
 ---
 
-# 58. Docker
+# 58. Deployment
 
-Создать production Dockerfile.
-
-Запуск:
+Docker не используется. Запуск — из виртуального окружения Python 3.12–3.13:
 
 ```bash
-docker compose up -d
+./run.sh
+```
+
+или напрямую:
+
+```bash
+.venv/bin/python -m agent --config config/agent.toml
 ```
 
 Environment:
@@ -2147,7 +2147,7 @@ GITHUB_TOKEN
 TAVILY_API_KEY
 ```
 
-Не помещать секреты в image.
+Не помещать секреты в конфигурационные файлы в репозитории.
 
 ---
 
@@ -2206,8 +2206,7 @@ README должен содержать:
 8. Personas.
 9. MUC.
 10. Memory.
-11. Docker.
-12. Security.
+11. Security.
 13. Development.
 14. Tests.
 15. Roadmap.
@@ -2415,7 +2414,6 @@ LLM
 * prompt injection protection работает;
 * quotas работают;
 * tests проходят;
-* Docker deployment работает;
 * configuration documented;
 * secrets не попадают в logs/history;
 * нет критических TODO/mock implementations.

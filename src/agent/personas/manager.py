@@ -15,7 +15,6 @@ apply to both scopes.
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -231,40 +230,6 @@ class PersonaManager:
         if self._active_persona(scope) == name:
             self._reset_active_persona(scope)
 
-    def _export_persona(self, scope: _Scope, name: str) -> str:
-        name = normalize_persona_name(name)
-        directory = (scope.personas_root / name).resolve()
-        root = scope.personas_root.resolve()
-        if not directory.is_relative_to(root) or not directory.is_dir():
-            raise ConfigError(f"No such persona: {name!r}")
-        payload: dict[str, str] = {}
-        for path in sorted(directory.iterdir()):
-            if path.is_file():
-                payload[path.name] = path.read_text(encoding="utf-8")
-        return json.dumps({"persona": name, "files": payload}, ensure_ascii=False)
-
-    def _import_persona(self, scope: _Scope, name: str, payload_json: str) -> None:
-        try:
-            data = json.loads(payload_json)
-        except json.JSONDecodeError as exc:
-            raise ConfigError(f"Invalid persona JSON: {exc}") from exc
-        files = data.get("files")
-        if not isinstance(files, dict) or not files:
-            raise ConfigError("Persona JSON must contain a non-empty 'files' object")
-        self._create_persona(scope, name)
-        directory = scope.personas_root / normalize_persona_name(name)
-        allowed = {
-            "persona.toml",
-            "identity.md",
-            "personality.md",
-            "instructions.md",
-            "context.md",
-        }
-        for filename, content in files.items():
-            if filename not in allowed or not isinstance(content, str):
-                continue
-            (directory / filename).write_text(content, encoding="utf-8")
-
     # -- user-facing API (DM) --------------------------------------------
 
     def list_user_personas(self, jid: str) -> list[str]:
@@ -312,12 +277,6 @@ class PersonaManager:
     def delete_user_persona(self, jid: str, name: str) -> None:
         self._delete_persona(self._user_scope(jid), name)
 
-    def export_user_persona(self, jid: str, name: str) -> str:
-        return self._export_persona(self._user_scope(jid), name)
-
-    def import_user_persona(self, jid: str, name: str, payload_json: str) -> None:
-        self._import_persona(self._user_scope(jid), name, payload_json)
-
     # -- room-facing API (MUC) -------------------------------------------
 
     def list_room_personas(self, room_jid: str) -> list[str]:
@@ -356,12 +315,6 @@ class PersonaManager:
 
     def delete_room_persona(self, room_jid: str, name: str) -> None:
         self._delete_persona(self._room_scope(room_jid), name)
-
-    def export_room_persona(self, room_jid: str, name: str) -> str:
-        return self._export_persona(self._room_scope(room_jid), name)
-
-    def import_room_persona(self, room_jid: str, name: str, payload_json: str) -> None:
-        self._import_persona(self._room_scope(room_jid), name, payload_json)
 
 
 def _global_persona_dirs(global_dirs: list[Path], name: str) -> list[Path]:
