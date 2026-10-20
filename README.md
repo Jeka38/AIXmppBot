@@ -7,9 +7,9 @@ The agent connects to an XMPP server as a normal account (C2S) or as an XEP-0114
 component, answers direct messages and group-chat mentions, runs an LLM agentic
 loop with tools, and persists per-user / per-room history and memory.
 
-> **Status: Phase 1–2 implemented.** See [Roadmap](#roadmap) for what is and is
-> not implemented. The specification this project is built against lives in
-> [`SPEC.md`](SPEC.md).
+> **Status: Phase 1–2 implemented, plus part of Phase 3** (per-skill
+> capabilities, confirmations, prompt-injection hardening). The specification
+> this project is built against lives in [`SPEC.md`](SPEC.md).
 
 ## Features
 
@@ -279,18 +279,6 @@ Tests must cover, at minimum: authorization, session and MUC isolation, skill
 permissions, prompt injection, credential redaction, SSRF, quotas, confirmation,
 the agentic loop and tool-round limit, reconnect, JSONL recovery and persona
 isolation (see [`SPEC.md`](SPEC.md) §57).
-
-## Roadmap
-
-| Phase | Scope | Status |
-| --- | --- | --- |
-| 1 | Foundation: C2S/component, reconnect, presence, MUC, XEP-0085, sessions, JSONL, commands, LLM clients, agentic loop, memory skills, security core | **Implemented** |
-| 2 | Web search, URL fetch, attachments, vision, personas, context compaction/summarisation, long-term memory injection | **Implemented** |
-| 3 | Per-skill capabilities, confirmations, prompt-injection hardening, REST skill engine | **In progress** (GitHub/JIRA/Front, quotas, generated skills deferred) |
-| 4 | Scheduler, presence triggers, webhooks, PubSub, PEP, advanced MUC | Planned |
-| 5 | Sub-agents, MCP, agent definitions, remote agent discovery/protocol | Planned |
-| 6 | XEP-0198, XEP-0115, XEP-0280, PostgreSQL, distributed scheduler, production deployment | Planned |
-| 7 | Wasm sandbox for generated skills | Planned |
 
 ## Personas
 

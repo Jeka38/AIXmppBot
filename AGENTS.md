@@ -13,7 +13,7 @@ GitHub/REST/JIRA/Front skills, generated skills, cost tracking, and **quota
 enforcement** — `QuotaConfig` and `QuotaError` exist but nothing consumes them,
 so `[quotas]` has no effect. Phases 4–7 are not started. Do not add a feature as
 if implemented unless it is genuinely working — stage unimplemented work
-explicitly (SPEC §62). The README roadmap table is the current status view.
+explicitly (SPEC §62).
 
 Goal: a production-oriented XMPP AI agent in Python 3.12–3.13 (Slixmpp 1.10.0,
 asyncio, Pydantic, TOML config): C2S + XEP-0114 component modes, MUC, agentic
